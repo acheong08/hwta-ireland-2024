@@ -15,10 +15,13 @@ def get_datacenters() -> list[Datacenter]:
 def get_servers() -> list[Server]:
     servers = pd.read_csv("data/servers.csv")
 
-    return [
+    p = [
         Server(**server).setup()  # pyright: ignore[reportArgumentType]
         for _, server in servers.iterrows()
     ]
+    for i in range(0, len(p)):
+        p[i].purchase_price = int(p[i].purchase_price * 10)
+    return p
 
 
 def get_selling_prices() -> list[SellingPrices]:
