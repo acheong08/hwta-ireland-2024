@@ -49,11 +49,24 @@ def solve(
     _ = cp.add(
         buying_cost
         == sum(
-            model[t][d][s][a][am] * server_costs[s].purchase_price
+            model[t][d][s]["buy"][am] * server_costs[s].purchase_price
             for t in model
             for d in model[t]
             for s in model[t][d]
-            for a in model[t][d][s]
+        )
+    )
+    selling_profit = cp.new_int_var(0, 100_000_000, "profit")
+    selling_profits: dict[str, SellingPrices] = {
+        selling_price.server_generation: selling_price
+        for selling_price in selling_prices
+    }
+    _ = cp.add(
+        selling_profit
+        == sum(
+            model[t][d][s]["sell"][am] * selling_profits[s].selling_price
+            for t in model
+            for d in model[t]
+            for s in model[t][d]
         )
     )
     for ts in model:
