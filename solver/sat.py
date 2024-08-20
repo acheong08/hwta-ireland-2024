@@ -3,14 +3,14 @@ from ortools.sat.python import cp_model
 
 from solver import models
 
-from .models import Datacenter, Demand, SellingPrices, Server
+from .models import Datacenter, Demand, SellingPrices, Sensitivity, Server
 
-t = "timestep"
-d = "datacenter"
-s = "server_generation"
-a = "actions"
-am = "amount"
-actions = ["buy", "sell"]
+# t = "timestep"
+# d = "datacenter"
+# s = "server_generation"
+# a = "actions"
+# am = "amount"
+actions = ["buy", "sell", "move"]
 
 
 def solve(
@@ -21,66 +21,117 @@ def solve(
 ) -> None:
 
     cp = cp_model.CpModel()
-    # Just an example. We should figure out the algebra on paper first
-    model = {
-        t: {
-            d: {
-                s: {
-                    a: {
-                        am: cp.new_int_var(
-                            0,
-                            100_000_000,
-                            f"{timestep}_{datacenter}_{server_generation}_{action}",
-                        )
-                        for action in actions
-                    }
-                    for server_generation in models.ServerGeneration
+    """
+    The action model is what will be solved by SAT. It decides when to buy, sell, or move servers.
+    """
+    action_model = {
+        timestep: {
+            datacenter: {
+                server_generation: {
+                    action: cp.new_int_var(
+                        0,
+                        100_000_000,
+                        f"{timestep}_{datacenter}_{server_generation}_{action}",
+                    )
+                    for action in actions
                 }
+                for server_generation in models.ServerGeneration
             }
             for datacenter in datacenters
         }
         for timestep in range(0, max(demand.time_step for demand in demands) + 1)
     }
-    server_costs: dict[str, Server] = {
-        server.server_generation: server for server in servers
+    # Allow quick lookups of id to object
+    sg_map = {server.server_generation: server for server in servers}
+    sp_map = {
+        selling_price.server_generation: selling_price
+        for selling_price in selling_prices
     }
-    # We create a map of server costs so we don't need to search
+
+    # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, 100_000_000, "cost")
     _ = cp.add(
         buying_cost
         == sum(
-            model[t][d][s]["buy"][am] * server_costs[s].purchase_price
-            for t in model
-            for d in model[t]
-            for s in model[t][d]
+            action_model[t][d][s]["buy"] * sg_map[s].purchase_price
+            for t in action_model
+            for d in action_model[t]
+            for s in action_model[t][d]
         )
     )
+    # Same for profits from selling our servers. These will later be calculated into total profit
     selling_profit = cp.new_int_var(0, 100_000_000, "profit")
-    selling_profits: dict[str, SellingPrices] = {
-        selling_price.server_generation: selling_price
-        for selling_price in selling_prices
-    }
     _ = cp.add(
         selling_profit
         == sum(
-            model[t][d][s]["sell"][am] * selling_profits[s].selling_price
-            for t in model
-            for d in model[t]
-            for s in model[t][d]
+            action_model[t][d][s]["sell"] * sp_map[s].selling_price
+            for t in action_model
+            for d in action_model[t]
+            for s in action_model[t][d]
         )
     )
-    for ts in model:
-        for dc in model[ts]:
-            # Only one action (or less) can be taken per datacenter per timestep
+
+    # Only one action (or less) can be taken per datacenter per timestep
+    for ts in action_model:
+        for dc in action_model[ts]:
             for action in actions:
-                cur_mod = cp.new_int_var(0, 1, f"{ts}_{dc}_{action}")
-                _ = cp.add_modulo_equality(cur_mod, model[ts][dc][s][action][am], 2)
-                for other_action in actions:
-                    if other_action != action:
-                        ot_mod = cp.new_int_var(
-                            0, 1, f"{ts}_{dc}_{action}_{other_action}"
+                for server_gen in action_model[ts][dc]:
+                    cur_mod = cp.new_int_var(0, 1, f"{ts}_{dc}_{action}")
+                    _ = cp.add_modulo_equality(
+                        cur_mod, action_model[ts][dc][server_gen][action], 2
+                    )
+                    for other_action in actions:
+                        if other_action != action:
+                            ot_mod = cp.new_int_var(
+                                0, 1, f"{ts}_{dc}_{action}_{other_action}"
+                            )
+                            _ = cp.add_modulo_equality(
+                                ot_mod,
+                                action_model[ts][dc][server_gen][other_action],
+                                2,
+                            )
+                            _ = cp.add(cur_mod == 0).only_enforce_if(
+                                ot_mod.is_equal_to(1)
+                            )
+
+    # Now we need to calculate the total availability of each type of server at each timestep
+    # based on the sum of purchase amounts minus the sum of sell amounts
+    # Customers don't really care about cost of energy and stuff like that. We can deal with that later
+    availability = {
+        t: {
+            sg: {
+                sen: cp.new_int_var(0, 100_000_000, f"{t}_{sg}_{sen}")
+                for sen in Sensitivity
+            }
+            for sg in models.ServerGeneration
+        }
+        for t in action_model
+    }
+    dc_map = {dc.datacenter_id: dc for dc in datacenters}
+    for ts in availability:
+        for server_generation in availability[ts]:
+            for sen in Sensitivity:
+                # Logic: we sum buy/sells for datacenters that match the sensitivity and subtract the sells
+                # We do this for all timesteps in the past
+                _ = cp.add(
+                    # Calculate current sum
+                    availability[ts][server_generation][sen]
+                    == sum(
+                        (
+                            action_model[ts][dc][server_generation]["buy"]
+                            if dc_map[dc.datacenter_id].latency_sensitivity == sen
+                            else 0
                         )
-                        _ = cp.add_modulo_equality(
-                            ot_mod, model[ts][dc][s][other_action][am], 2
+                        for dc in action_model[ts]
+                    )
+                    - sum(
+                        (
+                            action_model[ts][dc][server_generation]["sell"]
+                            if dc_map[dc.datacenter_id].latency_sensitivity == sen
+                            else 0
                         )
-                        _ = cp.add(cur_mod == 0).only_enforce_if(ot_mod.is_equal_to(1))
+                        for dc in action_model[ts]
+                    )
+                    # Take the previous timestep
+                    + availability[ts - 1][server_generation][sen]
+                )
