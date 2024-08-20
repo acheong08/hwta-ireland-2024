@@ -4,9 +4,11 @@
 import numpy as np
 import pandas as pd
 
+from constants import get_datacenters, get_selling_prices, get_servers
 from evaluation import get_actual_demand
 from seeds import known_seeds
 from solver.models import Demand
+from solver.sat import solve
 
 # from utils import save_solution
 
@@ -23,6 +25,7 @@ for seed in seeds:
             Demand(row.time_step, row.server_generation, row.high, row.medium, row.low)  # type: ignore[reportUnknownArgumentType]
         )
     print(parsed_demand[-1])
+    solve(parsed_demand, get_datacenters(), get_selling_prices(), get_servers())
     break
 
     # CALL YOUR APPROACH HERE

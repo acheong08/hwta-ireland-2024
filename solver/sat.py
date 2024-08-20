@@ -1,8 +1,11 @@
 # pyright: reportAssignmentType=false
+
+
 from ortools.sat.python import cp_model
 
 from solver import models
 
+# from .debuggy import debug_on   pyright: ignore[reportUnknownVariableType]
 from .models import Datacenter, Demand, SellingPrices, Sensitivity, Server
 
 # t = "timestep"
@@ -13,6 +16,7 @@ from .models import Datacenter, Demand, SellingPrices, Sensitivity, Server
 actions = ["buy", "sell", "move"]
 
 
+# @debug_on(Exception)
 def solve(
     demands: list[Demand],
     datacenters: list[Datacenter],
@@ -26,7 +30,7 @@ def solve(
     """
     action_model = {
         timestep: {
-            datacenter: {
+            datacenter.datacenter_id: {
                 server_generation: {
                     action: cp.new_int_var(
                         0,
@@ -41,6 +45,14 @@ def solve(
         }
         for timestep in range(0, max(demand.time_step for demand in demands) + 1)
     }
+    # HACK
+    action_model[-1] = {
+        dc.datacenter_id: {
+            sg: {ac: cp.new_int_var(0, 0, f"-1){dc}_{sg}_{ac}") for ac in actions}
+            for sg in models.ServerGeneration
+        }
+        for dc in datacenters
+    }
     # Allow quick lookups of id to object
     sg_map = {server.server_generation: server for server in servers}
     sp_map = {
@@ -53,7 +65,7 @@ def solve(
     _ = cp.add(
         buying_cost
         == sum(
-            action_model[t][d][s]["buy"] * sg_map[s].purchase_price
+            action_model[t][d][s]["buy"] * sg_map[s.value].purchase_price  # type: ignore[reportArgumentType]
             for t in action_model
             for d in action_model[t]
             for s in action_model[t][d]
@@ -64,7 +76,7 @@ def solve(
     _ = cp.add(
         selling_profit
         == sum(
-            action_model[t][d][s]["sell"] * sp_map[s].selling_price
+            action_model[t][d][s]["sell"] * sp_map[s.value].selling_price  # type: ignore[reportArgumentType]
             for t in action_model
             for d in action_model[t]
             for s in action_model[t][d]
@@ -73,6 +85,8 @@ def solve(
 
     # Only one action (or less) can be taken per datacenter per timestep
     for ts in action_model:
+        if ts == -1:
+            continue
         for dc in action_model[ts]:
             for action in actions:
                 for server_gen in action_model[ts][dc]:
@@ -108,7 +122,14 @@ def solve(
         for t in action_model
     }
     dc_map = {dc.datacenter_id: dc for dc in datacenters}
+    # HACK
+    availability[-1] = {
+        sg: {sen: cp.new_int_var(0, 0, f"-1_{sg}_{sen}") for sen in Sensitivity}
+        for sg in models.ServerGeneration
+    }
     for ts in availability:
+        if ts == -1:
+            continue
         for server_generation in availability[ts]:
             for sen in Sensitivity:
                 # Logic: we sum buy/sells for datacenters that match the sensitivity and subtract the sells
@@ -119,7 +140,7 @@ def solve(
                     == sum(
                         (
                             action_model[ts][dc][server_generation]["buy"]
-                            if dc_map[dc.datacenter_id].latency_sensitivity == sen
+                            if dc_map[dc].latency_sensitivity == sen
                             else 0
                         )
                         for dc in action_model[ts]
@@ -127,7 +148,7 @@ def solve(
                     - sum(
                         (
                             action_model[ts][dc][server_generation]["sell"]
-                            if dc_map[dc.datacenter_id].latency_sensitivity == sen
+                            if dc_map[dc].latency_sensitivity == sen
                             else 0
                         )
                         for dc in action_model[ts]
@@ -135,3 +156,12 @@ def solve(
                     # Take the previous timestep
                     + availability[ts - 1][server_generation][sen]
                 )
+    # TODO: Calculate server utilization
+
+    solver = cp_model.CpSolver()
+    status = solver.solve(cp)
+    if (
+        status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
+        or status == cp_model.FEASIBLE  # type: ignore[reportUnnecessaryComparison]
+    ):
+        print(solver.value(buying_cost))
