@@ -4,14 +4,7 @@
 from ortools.sat.python import cp_model
 
 # from .debuggy import debug_on   pyright: ignore[reportUnknownVariableType]
-from .models import (
-    Datacenter,
-    Demand,
-    SellingPrices,
-    Sensitivity,
-    Server,
-    ServerGeneration,
-)
+from .models import Datacenter, Demand, SellingPrices, Server, ServerGeneration
 
 # t = "timestep"
 # d = "datacenter"
@@ -119,47 +112,51 @@ def solve(
     availability = {
         t: {
             sg: {
-                sen: cp.new_int_var(0, 100_000_000, f"{t}_{sg}_{sen}")
-                for sen in Sensitivity
+                dc.datacenter_id: cp.new_int_var(0, 100_000_000, f"{t}_{sg}_{dc}")
+                for dc in datacenters
             }
             for sg in ServerGeneration
         }
         for t in action_model
     }
-    dc_map = {dc.datacenter_id: dc for dc in datacenters}
     # HACK
     availability[-1] = {
-        sg: {sen: cp.new_int_var(0, 0, f"-1_{sg}_{sen}") for sen in Sensitivity}
+        sg: {
+            dc.datacenter_id: cp.new_int_var(0, 0, f"-1_{sg}_{dc}")
+            for dc in datacenters
+        }
         for sg in ServerGeneration
     }
     for ts in availability:
         if ts == -1:
             continue
         for server_generation in availability[ts]:
-            for sen in Sensitivity:
+            for dc in availability[ts][server_generation]:
                 # Logic: we sum buy/sells for datacenters that match the sensitivity and subtract the sells
                 # We do this for all timesteps in the past
                 _ = cp.add(
                     # Calculate current sum
-                    availability[ts][server_generation][sen]
+                    availability[ts][server_generation][dc]
                     == sum(
-                        (
-                            action_model[ts][dc][server_generation]["buy"]
-                            if dc_map[dc].latency_sensitivity == sen
-                            else 0
-                        )
+                        (action_model[ts][dc][server_generation]["buy"])
                         for dc in action_model[ts]
                     )
                     - sum(
-                        (
-                            action_model[ts][dc][server_generation]["sell"]
-                            if dc_map[dc].latency_sensitivity == sen
-                            else 0
-                        )
+                        (action_model[ts][dc][server_generation]["sell"])
                         for dc in action_model[ts]
                     )
                     # Take the previous timestep
-                    + availability[ts - 1][server_generation][sen]
+                    + availability[ts - 1][server_generation][dc]
+                )
+    # You can't sell more than you have
+    for ts in availability:
+        if ts == -1:
+            continue
+        for server_generation in availability[ts]:
+            for dc in availability[ts][server_generation]:
+                _ = cp.add(
+                    availability[ts][server_generation][dc]
+                    >= action_model[ts][dc][server_generation]["sell"]
                 )
     # TODO: Calculate server utilization
 
