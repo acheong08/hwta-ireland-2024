@@ -60,10 +60,6 @@ def solve(
     }
     # Allow quick lookups of id to object
     sg_map = {server.server_generation: server for server in servers}
-    sp_map = {
-        selling_price.server_generation: selling_price
-        for selling_price in selling_prices
-    }
 
     # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, 100_000_000, "cost")
@@ -71,17 +67,6 @@ def solve(
         buying_cost
         == sum(
             action_model[t][d][s]["buy"] * sg_map[s].purchase_price
-            for t in action_model
-            for d in action_model[t]
-            for s in action_model[t][d]
-        )
-    )
-    # Same for profits from selling our servers. These will later be calculated into total profit
-    selling_profit = cp.new_int_var(0, 100_000_000, "profit")
-    _ = cp.add(
-        selling_profit
-        == sum(
-            action_model[t][d][s]["sell"] * sp_map[s].selling_price
             for t in action_model
             for d in action_model[t]
             for s in action_model[t][d]
@@ -216,6 +201,7 @@ def solve(
     cp.maximize(sum(utilization.values()))
 
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 60
     status = solver.solve(cp)
     if (
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
