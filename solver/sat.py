@@ -4,14 +4,8 @@
 from ortools.sat.python import cp_model
 
 from .debuggy import debug_on  # pyright: ignore[reportUnknownVariableType]
-from .models import (
-    Datacenter,
-    Demand,
-    SellingPrices,
-    Sensitivity,
-    Server,
-    ServerGeneration,
-)
+from .models import (Datacenter, Demand, SellingPrices, Sensitivity, Server,
+                     ServerGeneration)
 
 # t = "timestep"
 # d = "datacenter"
@@ -60,8 +54,8 @@ def solve(
                     action: cp.new_int_var(
                         0,
                         (
-                            dc_map[datacenter.datacenter_id].slots_capacity
-                            // sg_map[server_generation].slots_size
+                            (dc_map[datacenter.datacenter_id].slots_capacity
+                            // sg_map[server_generation].slots_size)
                             if sg_map[server_generation].release_time[0] <= timestep
                             and sg_map[server_generation].release_time[1] >= timestep
                             else 0
