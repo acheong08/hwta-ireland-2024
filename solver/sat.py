@@ -14,7 +14,7 @@ from .models import (Datacenter, Demand, SellingPrices, Sensitivity, Server,
 # am = "amount"
 actions = ["buy", "sell"]
 
-INFINITY = 100_000_000_00
+INFINITY = 129_496_729
 
 
 @debug_on(KeyError)
@@ -25,6 +25,18 @@ def solve(
     servers: list[Server],
 ) -> None:
 
+    sg_map = {server.server_generation: server for server in servers}
+    dc_map = {dc.datacenter_id: dc for dc in datacenters}
+    demand_map: dict[int, dict[ServerGeneration, dict[Sensitivity, int]]] = {}
+    for demand in demands:
+        if demand_map.get(demand.time_step) is None:
+            demand_map[demand.time_step] = {}
+        if demand_map[demand.time_step].get(demand.server_generation) is None:
+            demand_map[demand.time_step][demand.server_generation] = {}
+        for sen in Sensitivity:
+            demand_map[demand.time_step][demand.server_generation][sen] = (
+                demand.get_latency(sen)
+            )
     cp = cp_model.CpModel()
     """
     The action model is what will be solved by SAT. It decides when to buy, sell, or move servers.
@@ -35,7 +47,8 @@ def solve(
                 server_generation: {
                     action: cp.new_int_var(
                         0,
-                        INFINITY,
+                        dc_map[datacenter.datacenter_id].slots_capacity
+                        // sg_map[server_generation].slots_size,
                         f"{timestep}_{datacenter}_{server_generation}_{action}_action",
                     )
                     for action in actions
@@ -46,16 +59,6 @@ def solve(
         }
         for timestep in range(1, max(demand.time_step for demand in demands) + 1)
     }
-    # action_model[0] = {
-    #     dc.datacenter_id: {
-    #         sg: {ac: cp.new_int_var(0, 0, f"0_{dc}_{sg}_{ac}_action") for ac in actions}
-    #         for sg in ServerGeneration
-    #     }
-    #     for dc in datacenters
-    # }
-    # Allow quick lookups of id to object
-    sg_map = {server.server_generation: server for server in servers}
-
     # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, INFINITY, "cost")
     _ = cp.add(
@@ -145,14 +148,15 @@ def solve(
                     availability[ts][server_generation][dc]
                     >= action_model[ts][dc][server_generation]["sell"]
                 )
-    dc_map = {dc.datacenter_id: dc for dc in datacenters}
     energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
     _ = cp.add(
         energy_cost
         == sum(
-            availability[ts][sg][dc]
-            * sg_map[sg].energy_consumption
-            * dc_map[dc].cost_of_energy
+            (
+                availability[ts][sg][dc]
+                * sg_map[sg].energy_consumption
+                * dc_map[dc].cost_of_energy
+            )
             for ts in availability
             for sg in availability[ts]
             for dc in availability[ts][sg]
@@ -183,22 +187,12 @@ def solve(
                 <= dc_map[dc.datacenter_id].slots_capacity
             )
 
-    demand_map: dict[int, dict[ServerGeneration, dict[Sensitivity, int]]] = {}
-    for demand in demands:
-        if demand_map.get(demand.time_step) is None:
-            demand_map[demand.time_step] = {}
-        if demand_map[demand.time_step].get(demand.server_generation) is None:
-            demand_map[demand.time_step][demand.server_generation] = {}
-        for sen in Sensitivity:
-            demand_map[demand.time_step][demand.server_generation][sen] = (
-                demand.get_latency(sen)
-            )
     # Calculate server utilization
     # This is the ratio of demand to availability for server type (sensitivity + server generation)
     revenues = {
         ts: {
             sg: {
-                sen: cp.new_int_var(0, INFINITY* 100, f"{ts}_{sg}_{sen}_util")
+                sen: cp.new_int_var(0, INFINITY * 100, f"{ts}_{sg}_{sen}_util")
                 for sen in Sensitivity
             }
             for sg in ServerGeneration
@@ -222,13 +216,16 @@ def solve(
 
         for sg in revenues[ts]:
             for sen in revenues[ts][sg]:
-                total_availability = sum(
-                    (
-                        availability[ts][sg][dc.datacenter_id]
-                        if dc.latency_sensitivity == sen
-                        else 0
+                total_availability = (
+                    sum(
+                        (
+                            availability[ts][sg][dc.datacenter_id]
+                            if dc.latency_sensitivity == sen
+                            else 0
+                        )
+                        for dc in datacenters
                     )
-                    for dc in datacenters
+                    * 1000
                 )
                 demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
                 # Get amount of demand that can be satisfied
@@ -281,4 +278,5 @@ def solve(
         print("Infeasible")
     elif status == cp_model.MODEL_INVALID:  # type: ignore[reportUnnecessaryComparison]
         print("Model Invalid")
+        print(solver.solution_info())
         print(solver.response_stats())
