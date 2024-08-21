@@ -162,20 +162,29 @@ def solve(
             )
     # Calculate server utilization
     # This is the ratio of demand to availability for server type (sensitivity + server generation)
-    utilization = {ts: cp.new_int_var(0, 100, f"{ts}_util") for ts in availability}
-    for ts in utilization:
+    revenues = {
+        ts: {
+            sg: {
+                sen: cp.new_int_var(0, 100_000_000_000, f"{ts}_{sg}_{sen}_util")
+                for sen in Sensitivity
+            }
+            for sg in ServerGeneration
+        }
+        for ts in availability
+    }
+    sp_map: dict[ServerGeneration, dict[Sensitivity, int]] = {}
+    for sp in selling_prices:
+        if sp_map.get(sp.server_generation) is None:
+            sp_map[sp.server_generation] = {}
+
+        sp_map[sp.server_generation][sp.latency_sensitivity] = sp.selling_price
+
+    for ts in revenues:
         if ts == 0:
             continue
 
-        utilization_tmp = {
-            sg: {
-                sen: cp.new_int_var(0, 100, f"{ts}_{sg}_{sen}_tmp")
-                for sen in Sensitivity
-            }
-            for sg in availability[ts]
-        }
-        for sg in utilization_tmp:
-            for sen in utilization_tmp[sg]:
+        for sg in revenues[ts]:
+            for sen in revenues[ts][sg]:
                 total_availability = sum(
                     (
                         availability[ts][sg][dc.datacenter_id]
@@ -186,27 +195,35 @@ def solve(
                 )
                 demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
                 # Get amount of demand that can be satisfied
-                m = cp.new_int_var(0, 100_000, f"{ts}_{sg}_{sen}_m")
+                m = cp.new_int_var(0, 100_000_000, f"{ts}_{sg}_{sen}_m")
                 _ = cp.add_min_equality(m, [demand, total_availability])
-                _ = cp.add(utilization_tmp[sg][sen] == m)
+                _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
 
-        _ = cp.add(
-            utilization[ts]
-            == sum(
-                utilization_tmp[sg][sen]
-                for sg in utilization_tmp
-                for sen in utilization_tmp[sg]
-            )
+    _ = cp.maximize(
+        sum(
+            revenues[ts][sg][sen]
+            for ts in revenues
+            for sg in revenues[ts]
+            for sen in revenues[ts][sg]
         )
-    cp.maximize(sum(utilization.values()))
+        - buying_cost
+    )
 
+    total_revenue = sum(
+        revenues[ts][sg][sen]
+        for ts in revenues
+        for sg in revenues[ts]
+        for sen in revenues[ts][sg]
+    )
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 60
     status = solver.solve(cp)
     if (
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
         or status == cp_model.FEASIBLE  # type: ignore[reportUnnecessaryComparison]
     ):
+        print(solver.solution_info())
+        print(solver.response_stats())
+        print(solver.value(total_revenue))
         print(solver.value(buying_cost))
     elif status == cp_model.INFEASIBLE:  # type: ignore[reportUnnecessaryComparison]
         print("Infeasible")
