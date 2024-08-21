@@ -22,7 +22,7 @@ for seed in seeds:
     parsed_demand: list[Demand] = []
     for i, row in get_actual_demand(pd.read_csv("./data/demand.csv")).iterrows():  # type: ignore[reportUnknownVariableType, reportArgumentType]
         parsed_demand.append(
-            Demand(row.time_step, row.server_generation, row.high, row.medium, row.low)  # type: ignore[reportUnknownArgumentType]
+            Demand(row.time_step, row.server_generation, row.high, row.medium, row.low).setup()  # type: ignore[reportUnknownArgumentType]
         )
     print(parsed_demand[-1])
     solve(parsed_demand, get_datacenters(), get_selling_prices(), get_servers())

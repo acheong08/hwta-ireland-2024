@@ -21,6 +21,10 @@ class Demand:
     latency_medium: int
     latency_low: int
 
+    def setup(self):
+        self.server_generation = ServerGeneration(self.server_generation)
+        return self
+
 
 class Sensitivity(Enum):
     HIGH = "high"
@@ -35,12 +39,22 @@ class Datacenter:
     latency_sensitivity: Sensitivity
     slots_capacity: int
 
+    def setup(self):
+        self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
+        return self
+
 
 @dataclass
 class SellingPrices:
     server_generation: ServerGeneration
     latency_sensitivity: Sensitivity
     selling_price: int
+
+    def setup(self):
+        self.server_generation = ServerGeneration(self.server_generation)
+        self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
+        self.selling_price = int(self.selling_price * 10)
+        return self
 
 
 class ServerType(Enum):
@@ -62,5 +76,8 @@ class Server:
     average_maintenance_fee: int
 
     def setup(self):
+        self.server_generation = ServerGeneration(self.server_generation)
+        self.server_type = ServerType(self.server_type)
         self.release_time = json.loads(self.release_time)  # type: ignore[reportArgumentType]
+        self.purchase_price = int(self.purchase_price * 10)
         return self
