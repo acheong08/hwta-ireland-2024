@@ -4,14 +4,8 @@
 from ortools.sat.python import cp_model
 
 from .debuggy import debug_on  # pyright: ignore[reportUnknownVariableType]
-from .models import (
-    Datacenter,
-    Demand,
-    SellingPrices,
-    Sensitivity,
-    Server,
-    ServerGeneration,
-)
+from .models import (Datacenter, Demand, SellingPrices, Sensitivity, Server,
+                     ServerGeneration)
 
 # t = "timestep"
 # d = "datacenter"
@@ -19,6 +13,8 @@ from .models import (
 # a = "actions"
 # am = "amount"
 actions = ["buy", "sell", "move"]
+
+INFINITY = 100_000_000
 
 
 @debug_on(KeyError)
@@ -39,7 +35,7 @@ def solve(
                 server_generation: {
                     action: cp.new_int_var(
                         0,
-                        100_000_000,
+                        INFINITY,
                         f"{timestep}_{datacenter}_{server_generation}_{action}_action",
                     )
                     for action in actions
@@ -62,7 +58,7 @@ def solve(
     sg_map = {server.server_generation: server for server in servers}
 
     # We calculate the total cost of buying servers by multiplying to volume to price
-    buying_cost = cp.new_int_var(0, 100_000_000, "cost")
+    buying_cost = cp.new_int_var(0, INFINITY, "cost")
     _ = cp.add(
         buying_cost
         == sum(
@@ -104,7 +100,7 @@ def solve(
     availability = {
         t: {
             sg: {
-                dc.datacenter_id: cp.new_int_var(0, 100_000_000, f"{t}_{sg}_{dc}_avail")
+                dc.datacenter_id: cp.new_int_var(0, INFINITY, f"{t}_{sg}_{dc}_avail")
                 for dc in datacenters
             }
             for sg in ServerGeneration
@@ -140,16 +136,43 @@ def solve(
                     # Take the previous timestep
                     + availability[ts - 1][server_generation][dc]
                 )
-    # You can't sell more than you have
     for ts in availability:
         if ts == 0:
             continue
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
+                # You can't sell more than you have
                 _ = cp.add(
                     availability[ts][server_generation][dc]
                     >= action_model[ts][dc][server_generation]["sell"]
                 )
+    dc_map = {dc.datacenter_id: dc for dc in datacenters}
+    energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
+    _ = cp.add(
+        energy_cost
+        == sum(
+            availability[ts][sg][dc]
+            * sg_map[sg].energy_consumption
+            * dc_map[dc].cost_of_energy
+            for ts in availability
+            for sg in availability[ts]
+            for dc in availability[ts][sg]
+        )
+    )
+
+    # Ensure we don't run out of slots on datacenters
+    for ts in availability:
+        if ts == 0:
+            continue
+        for dc in datacenters:
+            _ = cp.add(
+                sum(
+                    availability[ts][sg][dc.datacenter_id] * sg_map[sg].slots_size
+                    for sg in availability[ts]
+                )
+                <= dc_map[dc.datacenter_id].slots_capacity
+            )
+
     demand_map: dict[int, dict[ServerGeneration, dict[Sensitivity, int]]] = {}
     for demand in demands:
         if demand_map.get(demand.time_step) is None:
@@ -165,7 +188,7 @@ def solve(
     revenues = {
         ts: {
             sg: {
-                sen: cp.new_int_var(0, 100_000_000_000, f"{ts}_{sg}_{sen}_util")
+                sen: cp.new_int_var(0, INFINITY * 1000, f"{ts}_{sg}_{sen}_util")
                 for sen in Sensitivity
             }
             for sg in ServerGeneration
@@ -195,10 +218,12 @@ def solve(
                 )
                 demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
                 # Get amount of demand that can be satisfied
-                m = cp.new_int_var(0, 100_000_000, f"{ts}_{sg}_{sen}_m")
+                m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
                 _ = cp.add_min_equality(m, [demand, total_availability])
                 _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
 
+    total_cost = cp.new_int_var(0, INFINITY, "total_cost")
+    _ = cp.add(total_cost == buying_cost + energy_cost)
     _ = cp.maximize(
         sum(
             revenues[ts][sg][sen]
@@ -206,7 +231,7 @@ def solve(
             for sg in revenues[ts]
             for sen in revenues[ts][sg]
         )
-        - buying_cost
+        - total_cost
     )
 
     total_revenue = sum(
@@ -224,9 +249,9 @@ def solve(
         print(solver.solution_info())
         print(solver.response_stats())
         print(solver.value(total_revenue))
-        print(solver.value(buying_cost))
+        print(solver.value(total_cost))
     elif status == cp_model.INFEASIBLE:  # type: ignore[reportUnnecessaryComparison]
         print("Infeasible")
     elif status == cp_model.MODEL_INVALID:  # type: ignore[reportUnnecessaryComparison]
         print("Model Invalid")
-        print(solver.solution_info())
+        # print(solver.solution_info())

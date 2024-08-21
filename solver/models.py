@@ -22,12 +22,13 @@ class Sensitivity(Enum):
 @dataclass
 class Datacenter:
     datacenter_id: str
-    cost_of_energy: float
+    cost_of_energy: int
     latency_sensitivity: Sensitivity
     slots_capacity: int
 
     def setup(self):
         self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
+        self.cost_of_energy = int(self.cost_of_energy * 100)
         return self
 
 
@@ -40,7 +41,7 @@ class SellingPrices:
     def setup(self):
         self.server_generation = ServerGeneration(self.server_generation)
         self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
-        self.selling_price = int(self.selling_price * 10)
+        self.selling_price = int(self.selling_price * 100)
         return self
 
 
@@ -66,7 +67,7 @@ class Server:
         self.server_generation = ServerGeneration(self.server_generation)
         self.server_type = ServerType(self.server_type)
         self.release_time = json.loads(self.release_time)  # type: ignore[reportArgumentType]
-        self.purchase_price = int(self.purchase_price * 10)
+        self.purchase_price = int(self.purchase_price * 100)
         return self
 
 
