@@ -3,8 +3,6 @@
 
 from ortools.sat.python import cp_model
 
-from solver import models
-
 # from .debuggy import debug_on   pyright: ignore[reportUnknownVariableType]
 from .models import (
     Datacenter,
@@ -46,7 +44,7 @@ def solve(
                     )
                     for action in actions
                 }
-                for server_generation in models.ServerGeneration
+                for server_generation in ServerGeneration
             }
             for datacenter in datacenters
         }
@@ -56,14 +54,14 @@ def solve(
     action_model[-1] = {
         dc.datacenter_id: {
             sg: {ac: cp.new_int_var(0, 0, f"-1){dc}_{sg}_{ac}") for ac in actions}
-            for sg in models.ServerGeneration
+            for sg in ServerGeneration
         }
         for dc in datacenters
     }
     # Allow quick lookups of id to object
-    sg_map = {ServerGeneration(server.server_generation): server for server in servers}
+    sg_map = {server.server_generation: server for server in servers}
     sp_map = {
-        ServerGeneration(selling_price.server_generation): selling_price
+        selling_price.server_generation: selling_price
         for selling_price in selling_prices
     }
 
@@ -124,7 +122,7 @@ def solve(
                 sen: cp.new_int_var(0, 100_000_000, f"{t}_{sg}_{sen}")
                 for sen in Sensitivity
             }
-            for sg in models.ServerGeneration
+            for sg in ServerGeneration
         }
         for t in action_model
     }
@@ -132,7 +130,7 @@ def solve(
     # HACK
     availability[-1] = {
         sg: {sen: cp.new_int_var(0, 0, f"-1_{sg}_{sen}") for sen in Sensitivity}
-        for sg in models.ServerGeneration
+        for sg in ServerGeneration
     }
     for ts in availability:
         if ts == -1:
