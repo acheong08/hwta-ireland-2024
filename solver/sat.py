@@ -3,8 +3,15 @@
 
 from ortools.sat.python import cp_model
 
-# from .debuggy import debug_on   pyright: ignore[reportUnknownVariableType]
-from .models import Datacenter, Demand, SellingPrices, Server, ServerGeneration
+from .debuggy import debug_on  # pyright: ignore[reportUnknownVariableType]
+from .models import (
+    Datacenter,
+    Demand,
+    SellingPrices,
+    Sensitivity,
+    Server,
+    ServerGeneration,
+)
 
 # t = "timestep"
 # d = "datacenter"
@@ -14,7 +21,7 @@ from .models import Datacenter, Demand, SellingPrices, Server, ServerGeneration
 actions = ["buy", "sell", "move"]
 
 
-# @debug_on(Exception)
+@debug_on(KeyError)
 def solve(
     demands: list[Demand],
     datacenters: list[Datacenter],
@@ -33,7 +40,7 @@ def solve(
                     action: cp.new_int_var(
                         0,
                         100_000_000,
-                        f"{timestep}_{datacenter}_{server_generation}_{action}",
+                        f"{timestep}_{datacenter}_{server_generation}_{action}_action",
                     )
                     for action in actions
                 }
@@ -41,12 +48,12 @@ def solve(
             }
             for datacenter in datacenters
         }
-        for timestep in range(0, max(demand.time_step for demand in demands) + 1)
+        for timestep in range(1, max(demand.time_step for demand in demands) + 1)
     }
     # HACK
-    action_model[-1] = {
+    action_model[0] = {
         dc.datacenter_id: {
-            sg: {ac: cp.new_int_var(0, 0, f"-1){dc}_{sg}_{ac}") for ac in actions}
+            sg: {ac: cp.new_int_var(0, 0, f"0_{dc}_{sg}_{ac}_action") for ac in actions}
             for sg in ServerGeneration
         }
         for dc in datacenters
@@ -83,7 +90,7 @@ def solve(
 
     # Only one action (or less) can be taken per datacenter per timestep
     for ts in action_model:
-        if ts == -1:
+        if ts == 0:
             continue
         for dc in action_model[ts]:
             for action in actions:
@@ -112,7 +119,7 @@ def solve(
     availability = {
         t: {
             sg: {
-                dc.datacenter_id: cp.new_int_var(0, 100_000_000, f"{t}_{sg}_{dc}")
+                dc.datacenter_id: cp.new_int_var(0, 100_000_000, f"{t}_{sg}_{dc}_avail")
                 for dc in datacenters
             }
             for sg in ServerGeneration
@@ -120,15 +127,15 @@ def solve(
         for t in action_model
     }
     # HACK
-    availability[-1] = {
+    availability[0] = {
         sg: {
-            dc.datacenter_id: cp.new_int_var(0, 0, f"-1_{sg}_{dc}")
+            dc.datacenter_id: cp.new_int_var(0, 0, f"0_{sg}_{dc}_avail")
             for dc in datacenters
         }
         for sg in ServerGeneration
     }
     for ts in availability:
-        if ts == -1:
+        if ts == 0:
             continue
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
@@ -150,7 +157,7 @@ def solve(
                 )
     # You can't sell more than you have
     for ts in availability:
-        if ts == -1:
+        if ts == 0:
             continue
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
@@ -158,7 +165,55 @@ def solve(
                     availability[ts][server_generation][dc]
                     >= action_model[ts][dc][server_generation]["sell"]
                 )
-    # TODO: Calculate server utilization
+    demand_map: dict[int, dict[ServerGeneration, dict[Sensitivity, int]]] = {}
+    for demand in demands:
+        if demand_map.get(demand.time_step) is None:
+            demand_map[demand.time_step] = {}
+        if demand_map[demand.time_step].get(demand.server_generation) is None:
+            demand_map[demand.time_step][demand.server_generation] = {}
+        for sen in Sensitivity:
+            demand_map[demand.time_step][demand.server_generation][sen] = (
+                demand.get_latency(sen)
+            )
+    # Calculate server utilization
+    # This is the ratio of demand to availability for server type (sensitivity + server generation)
+    utilization = {ts: cp.new_int_var(0, 100, f"{ts}_util") for ts in availability}
+    for ts in utilization:
+        if ts == 0:
+            continue
+
+        utilization_tmp = {
+            sg: {
+                sen: cp.new_int_var(0, 100, f"{ts}_{sg}_{sen}_tmp")
+                for sen in Sensitivity
+            }
+            for sg in availability[ts]
+        }
+        for sg in utilization_tmp:
+            for sen in utilization_tmp[sg]:
+                total_availability = sum(
+                    (
+                        availability[ts][sg][dc.datacenter_id]
+                        if dc.latency_sensitivity == sen
+                        else 0
+                    )
+                    for dc in datacenters
+                )
+                demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
+                # Get amount of demand that can be satisfied
+                m = cp.new_int_var(0, 100_000, f"{ts}_{sg}_{sen}_m")
+                _ = cp.add_min_equality(m, [demand, total_availability])
+                _ = cp.add(utilization_tmp[sg][sen] == m)
+
+        _ = cp.add(
+            utilization[ts]
+            == sum(
+                utilization_tmp[sg][sen]
+                for sg in utilization_tmp
+                for sen in utilization_tmp[sg]
+            )
+        )
+    cp.maximize(sum(utilization.values()))
 
     solver = cp_model.CpSolver()
     status = solver.solve(cp)
@@ -167,3 +222,8 @@ def solve(
         or status == cp_model.FEASIBLE  # type: ignore[reportUnnecessaryComparison]
     ):
         print(solver.value(buying_cost))
+    elif status == cp_model.INFEASIBLE:  # type: ignore[reportUnnecessaryComparison]
+        print("Infeasible")
+    elif status == cp_model.MODEL_INVALID:  # type: ignore[reportUnnecessaryComparison]
+        print("Model Invalid")
+        print(solver.solution_info())

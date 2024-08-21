@@ -13,19 +13,6 @@ class ServerGeneration(Enum):
     GPU_S3 = "GPU.S3"
 
 
-@dataclass
-class Demand:
-    time_step: int
-    server_generation: ServerGeneration
-    latency_high: int
-    latency_medium: int
-    latency_low: int
-
-    def setup(self):
-        self.server_generation = ServerGeneration(self.server_generation)
-        return self
-
-
 class Sensitivity(Enum):
     HIGH = "high"
     MEDIUM = "medium"
@@ -81,3 +68,24 @@ class Server:
         self.release_time = json.loads(self.release_time)  # type: ignore[reportArgumentType]
         self.purchase_price = int(self.purchase_price * 10)
         return self
+
+
+@dataclass
+class Demand:
+    time_step: int
+    server_generation: ServerGeneration
+    latency_high: int
+    latency_medium: int
+    latency_low: int
+
+    def setup(self):
+        self.server_generation = ServerGeneration(self.server_generation)
+        return self
+
+    def get_latency(self, sen: Sensitivity):
+        if sen == Sensitivity.HIGH:
+            return self.latency_high
+        if sen == Sensitivity.MEDIUM:
+            return self.latency_medium
+        if sen == Sensitivity.LOW:
+            return self.latency_low
