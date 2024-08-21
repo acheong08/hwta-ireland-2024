@@ -67,7 +67,7 @@ class Server:
         self.server_generation = ServerGeneration(self.server_generation)
         self.server_type = ServerType(self.server_type)
         self.release_time = json.loads(self.release_time)  # type: ignore[reportArgumentType]
-        self.purchase_price = int(self.purchase_price * 100)
+        self.purchase_price = int(self.purchase_price * 100 / 1000)
         return self
 
 

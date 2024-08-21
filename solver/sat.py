@@ -12,9 +12,9 @@ from .models import (Datacenter, Demand, SellingPrices, Sensitivity, Server,
 # s = "server_generation"
 # a = "actions"
 # am = "amount"
-actions = ["buy", "sell", "move"]
+actions = ["buy", "sell"]
 
-INFINITY = 100_000_000
+INFINITY = 100_000_000_00
 
 
 @debug_on(KeyError)
@@ -46,14 +46,13 @@ def solve(
         }
         for timestep in range(1, max(demand.time_step for demand in demands) + 1)
     }
-    # HACK
-    action_model[0] = {
-        dc.datacenter_id: {
-            sg: {ac: cp.new_int_var(0, 0, f"0_{dc}_{sg}_{ac}_action") for ac in actions}
-            for sg in ServerGeneration
-        }
-        for dc in datacenters
-    }
+    # action_model[0] = {
+    #     dc.datacenter_id: {
+    #         sg: {ac: cp.new_int_var(0, 0, f"0_{dc}_{sg}_{ac}_action") for ac in actions}
+    #         for sg in ServerGeneration
+    #     }
+    #     for dc in datacenters
+    # }
     # Allow quick lookups of id to object
     sg_map = {server.server_generation: server for server in servers}
 
@@ -160,6 +159,17 @@ def solve(
         )
     )
 
+    maintenance_cost = cp.new_int_var(0, INFINITY, "maintenance_cost")
+    _ = cp.add(
+        maintenance_cost
+        == sum(
+            availability[ts][sg][dc] * sg_map[sg].average_maintenance_fee
+            for ts in availability
+            for sg in availability[ts]
+            for dc in availability[ts][sg]
+        )
+    )
+
     # Ensure we don't run out of slots on datacenters
     for ts in availability:
         if ts == 0:
@@ -188,12 +198,16 @@ def solve(
     revenues = {
         ts: {
             sg: {
-                sen: cp.new_int_var(0, INFINITY * 1000, f"{ts}_{sg}_{sen}_util")
+                sen: cp.new_int_var(0, INFINITY* 100, f"{ts}_{sg}_{sen}_util")
                 for sen in Sensitivity
             }
             for sg in ServerGeneration
         }
         for ts in availability
+    }
+    revenues[0] = {
+        sg: {sen: cp.new_int_var(0, 0, f"0_{sg}_{sen}_util") for sen in Sensitivity}
+        for sg in ServerGeneration
     }
     sp_map: dict[ServerGeneration, dict[Sensitivity, int]] = {}
     for sp in selling_prices:
@@ -223,7 +237,7 @@ def solve(
                 _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
 
     total_cost = cp.new_int_var(0, INFINITY, "total_cost")
-    _ = cp.add(total_cost == buying_cost + energy_cost)
+    _ = cp.add(total_cost == buying_cost + energy_cost + maintenance_cost)
     _ = cp.maximize(
         sum(
             revenues[ts][sg][sen]
@@ -248,10 +262,23 @@ def solve(
     ):
         print(solver.solution_info())
         print(solver.response_stats())
-        print(solver.value(total_revenue))
-        print(solver.value(total_cost))
+        for ts in action_model:
+            for dc in action_model[ts]:
+                for sg in action_model[ts][dc]:
+                    for action in action_model[ts][dc][sg]:
+                        if solver.value(action_model[ts][dc][sg][action]) > 0:
+                            print(
+                                f"{ts} {dc} {sg} {action} {solver.value(action_model[ts][dc][sg][action])}"
+                            )
+        print("Revenue:", solver.value(total_revenue))
+        print("Cost:", solver.value(total_cost))
+        print("Profit:", solver.value(total_revenue) - solver.value(total_cost))
+        print("Energy Cost:", solver.value(energy_cost))
+        print("Maintenance Cost:", solver.value(maintenance_cost))
+        print("Buying Cost:", solver.value(buying_cost))
+        breakpoint()
     elif status == cp_model.INFEASIBLE:  # type: ignore[reportUnnecessaryComparison]
         print("Infeasible")
     elif status == cp_model.MODEL_INVALID:  # type: ignore[reportUnnecessaryComparison]
         print("Model Invalid")
-        # print(solver.solution_info())
+        print(solver.response_stats())
