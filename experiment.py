@@ -22,3 +22,20 @@ def only_one():
     else:
         print("Status:", status)
         print("No solution found")
+
+for i in range(32, 64):
+    try:
+        model = cp_model.CpModel()
+        x = model.NewIntVar(0, 2**i, "x")
+        y = model.NewIntVar(0, 10, "y")
+        model.Add(x != y)
+        model.Add(x == 2)
+
+        solver = cp_model.CpSolver()
+        status = solver.Solve(model)
+        if status == cp_model.FEASIBLE or status == cp_model.OPTIMAL:
+            print(f"x={solver.Value(x)}, y={solver.Value(y)}")
+            print(f"x={solver.Value(x)}, y={solver.Value(y)}")
+    except:
+        print(f"Error: {i}")
+        break
