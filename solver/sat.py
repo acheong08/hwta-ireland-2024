@@ -161,6 +161,14 @@ def solve(
                     )
                     # Take the previous timestep
                     + availability[ts - 1][server_generation][dc]
+                    # Subtract the expired servers based on life expectancy
+                    - (
+                        availability[ts - sg_map[server_generation].life_expectancy][
+                            server_generation
+                        ][dc]
+                        if ts > sg_map[server_generation].life_expectancy
+                        else 0
+                    )
                 )
     for ts in availability:
         if ts == 0:
