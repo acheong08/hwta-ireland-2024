@@ -6,7 +6,14 @@ from ortools.sat.python import cp_model
 from solver import models
 
 # from .debuggy import debug_on   pyright: ignore[reportUnknownVariableType]
-from .models import Datacenter, Demand, SellingPrices, Sensitivity, Server
+from .models import (
+    Datacenter,
+    Demand,
+    SellingPrices,
+    Sensitivity,
+    Server,
+    ServerGeneration,
+)
 
 # t = "timestep"
 # d = "datacenter"
@@ -54,9 +61,9 @@ def solve(
         for dc in datacenters
     }
     # Allow quick lookups of id to object
-    sg_map = {server.server_generation: server for server in servers}
+    sg_map = {ServerGeneration(server.server_generation): server for server in servers}
     sp_map = {
-        selling_price.server_generation: selling_price
+        ServerGeneration(selling_price.server_generation): selling_price
         for selling_price in selling_prices
     }
 
@@ -65,7 +72,7 @@ def solve(
     _ = cp.add(
         buying_cost
         == sum(
-            action_model[t][d][s]["buy"] * sg_map[s.value].purchase_price  # type: ignore[reportArgumentType]
+            action_model[t][d][s]["buy"] * sg_map[s].purchase_price
             for t in action_model
             for d in action_model[t]
             for s in action_model[t][d]
@@ -76,7 +83,7 @@ def solve(
     _ = cp.add(
         selling_profit
         == sum(
-            action_model[t][d][s]["sell"] * sp_map[s.value].selling_price  # type: ignore[reportArgumentType]
+            action_model[t][d][s]["sell"] * sp_map[s].selling_price
             for t in action_model
             for d in action_model[t]
             for s in action_model[t][d]
