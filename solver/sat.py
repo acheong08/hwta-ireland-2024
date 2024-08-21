@@ -59,8 +59,13 @@ def solve(
                 server_generation: {
                     action: cp.new_int_var(
                         0,
-                        dc_map[datacenter.datacenter_id].slots_capacity
-                        // sg_map[server_generation].slots_size,
+                        (
+                            dc_map[datacenter.datacenter_id].slots_capacity
+                            // sg_map[server_generation].slots_size
+                            if sg_map[server_generation].release_time[0] <= timestep
+                            and sg_map[server_generation].release_time[1] >= timestep
+                            else 0
+                        ),
                         f"{timestep}_{datacenter}_{server_generation}_{action}_action",
                     )
                     for action in actions
