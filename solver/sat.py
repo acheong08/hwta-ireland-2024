@@ -4,8 +4,14 @@
 from ortools.sat.python import cp_model
 
 from .debuggy import debug_on  # pyright: ignore[reportUnknownVariableType]
-from .models import (Datacenter, Demand, SellingPrices, Sensitivity, Server,
-                     ServerGeneration)
+from .models import (
+    Datacenter,
+    Demand,
+    SellingPrices,
+    Sensitivity,
+    Server,
+    ServerGeneration,
+)
 
 # t = "timestep"
 # d = "datacenter"
@@ -14,7 +20,7 @@ from .models import (Datacenter, Demand, SellingPrices, Sensitivity, Server,
 # am = "amount"
 actions = ["buy", "sell"]
 
-INFINITY = 129_496_729
+INFINITY: int = 2**43
 
 
 @debug_on(KeyError)
@@ -37,6 +43,12 @@ def solve(
             demand_map[demand.time_step][demand.server_generation][sen] = (
                 demand.get_latency(sen)
             )
+    sp_map: dict[ServerGeneration, dict[Sensitivity, int]] = {}
+    for sp in selling_prices:
+        if sp_map.get(sp.server_generation) is None:
+            sp_map[sp.server_generation] = {}
+
+        sp_map[sp.server_generation][sp.latency_sensitivity] = sp.selling_price
     cp = cp_model.CpModel()
     """
     The action model is what will be solved by SAT. It decides when to buy, sell, or move servers.
@@ -102,7 +114,14 @@ def solve(
     availability = {
         t: {
             sg: {
-                dc.datacenter_id: cp.new_int_var(0, INFINITY, f"{t}_{sg}_{dc}_avail")
+                dc.datacenter_id: cp.new_int_var(
+                    0,
+                    1000
+                    * (
+                        dc_map[dc.datacenter_id].slots_capacity // sg_map[sg].slots_size
+                    ),
+                    f"{t}_{sg}_{dc}_avail",
+                )
                 for dc in datacenters
             }
             for sg in ServerGeneration
@@ -192,7 +211,7 @@ def solve(
     revenues = {
         ts: {
             sg: {
-                sen: cp.new_int_var(0, INFINITY * 100, f"{ts}_{sg}_{sen}_util")
+                sen: cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_util")
                 for sen in Sensitivity
             }
             for sg in ServerGeneration
@@ -203,12 +222,6 @@ def solve(
         sg: {sen: cp.new_int_var(0, 0, f"0_{sg}_{sen}_util") for sen in Sensitivity}
         for sg in ServerGeneration
     }
-    sp_map: dict[ServerGeneration, dict[Sensitivity, int]] = {}
-    for sp in selling_prices:
-        if sp_map.get(sp.server_generation) is None:
-            sp_map[sp.server_generation] = {}
-
-        sp_map[sp.server_generation][sp.latency_sensitivity] = sp.selling_price
 
     for ts in revenues:
         if ts == 0:
