@@ -24,7 +24,6 @@ for seed in seeds:
         parsed_demand.append(
             Demand(row.time_step, row.server_generation, row.high, row.medium, row.low).setup()  # type: ignore[reportUnknownArgumentType]
         )
-    print(parsed_demand[-1])
     solve(parsed_demand, get_datacenters(), get_selling_prices(), get_servers())
     break
 
