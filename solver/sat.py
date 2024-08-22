@@ -236,12 +236,10 @@ def solve(
         for dc in datacenters:
             _ = cp.add(
                 sum(
-                    availability[ts][sg][dc.datacenter_id]
-                    * sg_map[sg].slots_size
-                    * 1000
+                    availability[ts][sg][dc.datacenter_id] * sg_map[sg].slots_size
                     for sg in availability[ts]
                 )
-                <= dc_map[dc.datacenter_id].slots_capacity
+                < dc_map[dc.datacenter_id].slots_capacity
             )
 
     # Calculate server utilization

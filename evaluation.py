@@ -334,7 +334,6 @@ def put_fleet_on_hold(fleet):
     return fleet
 
 
-@debug_on(KeyError)
 def update_check_lifespan(fleet):
     fleet["lifespan"] = fleet["lifespan"].fillna(0)
     fleet["lifespan"] += 1
@@ -424,6 +423,7 @@ def get_evaluation(
     return OBJECTIVE
 
 
+@debug_on(Exception)
 def evaluation_function(
     solution,
     demand,
