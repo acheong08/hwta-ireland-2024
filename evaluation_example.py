@@ -3,15 +3,17 @@
 from evaluation import evaluation_function
 from utils import load_problem_data, load_solution
 
-# LOAD SOLUTION
-solution = load_solution("./data/test.json")
+solutions = ["./output/1741.json", "./data/solution_example.json"]
+for solution in solutions:
+    # LOAD SOLUTION
+    solution = load_solution(solution)
 
-# LOAD PROBLEM DATA
-demand, datacenters, servers, selling_prices = load_problem_data()
+    # LOAD PROBLEM DATA
+    demand, datacenters, servers, selling_prices = load_problem_data()
 
-# EVALUATE THE SOLUTION
-score = evaluation_function(
-    solution, demand, datacenters, servers, selling_prices, seed=1741
-)
+    # EVALUATE THE SOLUTION
+    score = evaluation_function(
+        solution, demand, datacenters, servers, selling_prices, seed=1741
+    )
 
-print(f"Solution score: {score}")
+    print(f"Solution score: {score}")
