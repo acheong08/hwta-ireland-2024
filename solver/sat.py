@@ -169,13 +169,9 @@ def solve(
                 _ = cp.add(
                     # Calculate current sum
                     availability[ts][server_generation][dc]
-                    == sum(
-                        (action_model[ts][dc][server_generation][Action.BUY])
-                        for dc in action_model[ts]
-                    )
-                    - sum(
-                        (action_model[ts][dc][server_generation][Action.DISMISS])
-                        for dc in action_model[ts]
+                    == (
+                        action_model[ts][dc][server_generation][Action.BUY]
+                        - action_model[ts][dc][server_generation][Action.DISMISS]
                     )
                     # Take the previous timestep
                     + availability[ts - 1][server_generation][dc]
@@ -193,7 +189,7 @@ def solve(
             continue
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
-                # You can't sell more than you have
+                # You can't sell more than you have (for the specific datacenter)
                 _ = cp.add(
                     availability[ts][server_generation][dc]
                     >= action_model[ts][dc][server_generation][Action.DISMISS]
