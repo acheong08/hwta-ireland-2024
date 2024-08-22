@@ -162,6 +162,15 @@ def solve(
     for ts in availability:
         if ts == 0:
             continue
+        # The sum of availability at any given time must be at least 1
+        _ = cp.add(
+            sum(
+                availability[ts][sg][dc]
+                for sg in availability[ts]
+                for dc in availability[ts][sg]
+            )
+            >= 1
+        )
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
                 # Logic: we sum buy/sells for datacenters that match the sensitivity and subtract the sells
@@ -227,7 +236,9 @@ def solve(
         for dc in datacenters:
             _ = cp.add(
                 sum(
-                    availability[ts][sg][dc.datacenter_id] * sg_map[sg].slots_size
+                    availability[ts][sg][dc.datacenter_id]
+                    * sg_map[sg].slots_size
+                    * 1000
                     for sg in availability[ts]
                 )
                 <= dc_map[dc.datacenter_id].slots_capacity
