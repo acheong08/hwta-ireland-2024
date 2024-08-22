@@ -6,11 +6,11 @@ import pandas as pd
 
 from constants import get_datacenters, get_selling_prices, get_servers
 from evaluation import get_actual_demand
+from generate import generate
 from seeds import known_seeds
 from solver.models import Demand
 from solver.sat import solve
-
-# from utils import save_solution
+from utils import save_solution  # type: ignore[import]
 
 seeds: list[int] = known_seeds("training")
 
@@ -24,11 +24,10 @@ for seed in seeds:
         parsed_demand.append(
             Demand(row.time_step, row.server_generation, row.high, row.medium, row.low).setup()  # type: ignore[reportUnknownArgumentType]
         )
-    solve(parsed_demand, get_datacenters(), get_selling_prices(), get_servers())
-    break
+    solution = solve(
+        parsed_demand, get_datacenters(), get_selling_prices(), get_servers()
+    )
+    generated = generate(solution)
 
-    # CALL YOUR APPROACH HERE
-    # solution = get_my_solution(actual_demand)
-    #
-    # # SAVE YOUR SOLUTION
-    # save_solution(solution, f"./output/{seed}.json")
+    save_solution(generated, f"./output/{seed}.json")
+    break
