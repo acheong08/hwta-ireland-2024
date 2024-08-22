@@ -90,3 +90,18 @@ class Demand:
             return self.latency_medium
         if sen == Sensitivity.LOW:
             return self.latency_low
+
+
+class Action(Enum):
+    BUY = "buy"
+    DISMISS = "dismiss"
+    # MOVE = "move"
+
+
+@dataclass
+class SolutionEntry:
+    timestep: int
+    datacenter_id: str
+    server_generation: ServerGeneration
+    action: Action
+    amount: int
