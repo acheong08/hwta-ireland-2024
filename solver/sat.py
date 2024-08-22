@@ -79,6 +79,21 @@ def solve(
         }
         for timestep in range(1, max(demand.time_step for demand in demands) + 1)
     }
+    # No 0 timestep
+    action_model[0] = {
+        datacenter.datacenter_id: {
+            server_generation: {
+                action: cp.new_int_var(
+                    0,
+                    0,
+                    f"0_{datacenter}_{server_generation}_{action}_action",
+                )
+                for action in Action
+            }
+            for server_generation in ServerGeneration
+        }
+        for datacenter in datacenters
+    }
     # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, INFINITY, "cost")
     _ = cp.add(
@@ -282,6 +297,8 @@ def solve(
         print(solver.solution_info())
         print(solver.response_stats())
         for ts in action_model:
+            if ts == 0:
+                continue
             for dc in action_model[ts]:
                 for sg in action_model[ts][dc]:
                     for action in action_model[ts][dc][sg]:
