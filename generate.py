@@ -11,6 +11,8 @@ def generate(entries: list[SolutionEntry]) -> list[dict[str, str | int]]:
         if entry.action == Action.BUY:
             if ids.get(entry.datacenter_id) is None:
                 ids[entry.datacenter_id] = {entry.server_generation: []}
+            if ids[entry.datacenter_id].get(entry.server_generation) is None:
+                ids[entry.datacenter_id][entry.server_generation] = []
             for _ in range(entry.amount * 1000):
                 ids[entry.datacenter_id][entry.server_generation].append(counter)
                 solution.append(
