@@ -22,7 +22,8 @@ def generate(
                     {
                         "id": counter,
                         "expires_at": entry.timestep
-                        + server_map[entry.server_generation].life_expectancy,
+                        + server_map[entry.server_generation].life_expectancy
+                        - 1,
                     }
                 )
                 solution.append(

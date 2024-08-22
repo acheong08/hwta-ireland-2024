@@ -1,3 +1,4 @@
+1 DC1 ServerGeneration.CPU_S1 Action.BUY 1
 37 DC1 ServerGeneration.CPU_S2 Action.BUY 18
 37 DC2 ServerGeneration.CPU_S2 Action.BUY 19
 37 DC3 ServerGeneration.CPU_S2 Action.BUY 8
