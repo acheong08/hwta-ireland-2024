@@ -24,10 +24,9 @@ for seed in seeds:
         parsed_demand.append(
             Demand(row.time_step, row.server_generation, row.high, row.medium, row.low).setup()  # type: ignore[reportUnknownArgumentType]
         )
-    solution = solve(
-        parsed_demand, get_datacenters(), get_selling_prices(), get_servers()
-    )
-    generated = generate(solution)
+    servers = get_servers()
+    solution = solve(parsed_demand, get_datacenters(), get_selling_prices(), servers)
+    generated = generate(solution, servers)
 
     save_solution(generated, f"./output/{seed}.json")
     break
