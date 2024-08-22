@@ -5,12 +5,14 @@ from ortools.sat.python import cp_model
 
 from .debuggy import debug_on  # pyright: ignore[reportUnknownVariableType]
 from .models import (
+    Action,
     Datacenter,
     Demand,
     SellingPrices,
     Sensitivity,
     Server,
     ServerGeneration,
+    SolutionEntry,
 )
 
 # t = "timestep"
@@ -18,7 +20,6 @@ from .models import (
 # s = "server_generation"
 # a = "actions"
 # am = "amount"
-actions = ["buy", "sell"]
 
 INFINITY: int = 2**43
 
@@ -29,7 +30,7 @@ def solve(
     datacenters: list[Datacenter],
     selling_prices: list[SellingPrices],
     servers: list[Server],
-) -> None:
+) -> list[SolutionEntry]:
 
     sg_map = {server.server_generation: server for server in servers}
     dc_map = {dc.datacenter_id: dc for dc in datacenters}
@@ -70,7 +71,7 @@ def solve(
                         ),
                         f"{timestep}_{datacenter}_{server_generation}_{action}_action",
                     )
-                    for action in actions
+                    for action in Action
                 }
                 for server_generation in ServerGeneration
             }
@@ -83,7 +84,7 @@ def solve(
     _ = cp.add(
         buying_cost
         == sum(
-            action_model[t][d][s]["buy"] * sg_map[s].purchase_price
+            action_model[t][d][s][Action.BUY] * sg_map[s].purchase_price
             for t in action_model
             for d in action_model[t]
             for s in action_model[t][d]
@@ -95,13 +96,13 @@ def solve(
         if ts == 0:
             continue
         for dc in action_model[ts]:
-            for action in actions:
+            for action in Action:
                 for server_gen in action_model[ts][dc]:
                     cur_mod = cp.new_int_var(0, 1, f"{ts}_{dc}_{action}")
                     _ = cp.add_modulo_equality(
                         cur_mod, action_model[ts][dc][server_gen][action], 2
                     )
-                    for other_action in actions:
+                    for other_action in Action:
                         if other_action != action:
                             ot_mod = cp.new_int_var(
                                 0, 1, f"{ts}_{dc}_{action}_{other_action}"
@@ -154,11 +155,11 @@ def solve(
                     # Calculate current sum
                     availability[ts][server_generation][dc]
                     == sum(
-                        (action_model[ts][dc][server_generation]["buy"])
+                        (action_model[ts][dc][server_generation][Action.BUY])
                         for dc in action_model[ts]
                     )
                     - sum(
-                        (action_model[ts][dc][server_generation]["sell"])
+                        (action_model[ts][dc][server_generation][Action.DISMISS])
                         for dc in action_model[ts]
                     )
                     # Take the previous timestep
@@ -180,7 +181,7 @@ def solve(
                 # You can't sell more than you have
                 _ = cp.add(
                     availability[ts][server_generation][dc]
-                    >= action_model[ts][dc][server_generation]["sell"]
+                    >= action_model[ts][dc][server_generation][Action.DISMISS]
                 )
     energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
     _ = cp.add(
@@ -273,6 +274,7 @@ def solve(
 
     solver = cp_model.CpSolver()
     status = solver.solve(cp)
+    solution: list[SolutionEntry] = []
     if (
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
         or status == cp_model.FEASIBLE  # type: ignore[reportUnnecessaryComparison]
@@ -283,20 +285,19 @@ def solve(
             for dc in action_model[ts]:
                 for sg in action_model[ts][dc]:
                     for action in action_model[ts][dc][sg]:
-                        if solver.value(action_model[ts][dc][sg][action]) > 0:
-                            print(
-                                f"{ts} {dc} {sg} {action} {solver.value(action_model[ts][dc][sg][action])}"
-                            )
+                        val = solver.value(action_model[ts][dc][sg][action])
+                        if val > 0:
+                            print(f"{ts} {dc} {sg} {action} {val}")
+                            solution.append(SolutionEntry(ts, dc, sg, action, val))
         print("Revenue:", solver.value(total_revenue))
         print("Cost:", solver.value(total_cost))
         print("Profit:", solver.value(total_revenue) - solver.value(total_cost))
         print("Energy Cost:", solver.value(energy_cost))
         print("Maintenance Cost:", solver.value(maintenance_cost))
         print("Buying Cost:", solver.value(buying_cost))
-        breakpoint()
-    elif status == cp_model.INFEASIBLE:  # type: ignore[reportUnnecessaryComparison]
-        print("Infeasible")
-    elif status == cp_model.MODEL_INVALID:  # type: ignore[reportUnnecessaryComparison]
-        print("Model Invalid")
+        return solution
+    else:
+        print(solver.status_name(status))
         print(solver.solution_info())
         print(solver.response_stats())
+        raise Exception("No solution found")
