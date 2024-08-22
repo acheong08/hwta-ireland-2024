@@ -17,7 +17,7 @@ def generate(
                 ids[entry.datacenter_id] = {entry.server_generation: []}
             if ids[entry.datacenter_id].get(entry.server_generation) is None:
                 ids[entry.datacenter_id][entry.server_generation] = []
-            for _ in range(entry.amount * 1000):
+            for _ in range(entry.amount):
                 ids[entry.datacenter_id][entry.server_generation].append(
                     {
                         "id": counter,
@@ -43,7 +43,7 @@ def generate(
                 <= entry.timestep
             ):
                 _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
-            for _ in range(entry.amount * 1000):
+            for _ in range(entry.amount):
                 server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
                 solution.append(
                     {

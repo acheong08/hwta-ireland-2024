@@ -29,7 +29,9 @@ for seed in seeds:
     servers = get_servers()
     solution = solve(parsed_demand, get_datacenters(), get_selling_prices(), servers)
     # Save the solution for reuse
-    json.dump(solution, open(f"./output/{seed}_solution.json", "w"))
+    json.dump(
+        [sol.to_dict() for sol in solution], open(f"./output/{seed}_solution.json", "w")
+    )
     generated = generate(solution, servers)
 
     save_solution(generated, f"./output/{seed}.json")

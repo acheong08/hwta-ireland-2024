@@ -105,3 +105,12 @@ class SolutionEntry:
     server_generation: ServerGeneration
     action: Action
     amount: int
+
+    def to_dict(self):
+        return {
+            "timestep": self.timestep,
+            "datacenter_id": self.datacenter_id,
+            "server_generation": self.server_generation.value,
+            "action": self.action.value,
+            "amount": self.amount,
+        }
