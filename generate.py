@@ -57,12 +57,19 @@ def generate(
 
 
 if __name__ == "__main__":
-    entries = [
-        SolutionEntry(1, "dc1", ServerGeneration.GPU_S1, Action.BUY, 10),
-        SolutionEntry(1, "dc2", ServerGeneration.GPU_S2, Action.BUY, 3),
-        SolutionEntry(2, "dc1", ServerGeneration.GPU_S1, Action.DISMISS, 5),
-        SolutionEntry(2, "dc2", ServerGeneration.GPU_S2, Action.DISMISS, 3),
-        SolutionEntry(3, "dc1", ServerGeneration.GPU_S1, Action.DISMISS, 5),
-    ]
-
+    solution = open("solution.txt", "r")
+    entries: list[SolutionEntry] = []
+    for line in solution.readlines():
+        parts = line.split()
+        action = "buy" if parts[3] == "Action.BUY" else "dismiss"
+        server_generation = parts[2].split(".")[-1].replace("_", ".")
+        entries.append(
+            SolutionEntry(
+                timestep=int(parts[0]),
+                datacenter_id=parts[1],
+                server_generation=ServerGeneration(server_generation),
+                action=Action(action),
+                amount=int(parts[4]),
+            )
+        )
     save_solution(generate(entries, get_servers()), "data/test.json")
