@@ -92,6 +92,15 @@ def solve(
     # Only one action (or less) can be taken per datacenter per timestep
     for ts in action_model:
         if ts == 0:
+            # Cannot dismiss servers at ts 0
+            _ = cp.add(
+                sum(
+                    action_model[ts][dc.datacenter_id][sg][Action.DISMISS]
+                    for dc in datacenters
+                    for sg in ServerGeneration
+                )
+                == 0
+            )
             continue
 
         for dc in action_model[ts]:
@@ -323,7 +332,7 @@ def solve(
     _ = cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 5 * 60
+    solver.parameters.max_time_in_seconds = 15 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (

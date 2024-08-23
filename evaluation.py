@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import truncweibull_min
 
-from solver.debuggy import debug_on
-
 # CREATE LOGGER
 logger = logging.getLogger()
 file_handler = logging.FileHandler("logs.log")
@@ -423,7 +421,6 @@ def get_evaluation(
     return OBJECTIVE
 
 
-@debug_on(Exception)
 def evaluation_function(
     solution,
     demand,
