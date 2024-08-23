@@ -1,18 +1,16 @@
 # pyright: basic
 
+import os
+
 from evaluation import evaluation_function
 from utils import load_problem_data, load_solution
 
-solutions = [
-    "./output/test.json",
-    "./output/1741.json",
-    "./output/3163.json",
-    "./output/6053.json",
-    "./output/2237.json",
-]
-for solution in solutions:
+# List files in output directory
+solutions = [f"./output/{f}" for f in os.listdir("output")]
+
+for f in solutions:
     # LOAD SOLUTION
-    solution = load_solution(solution)
+    solution = load_solution(f)
 
     # LOAD PROBLEM DATA
     demand, datacenters, servers, selling_prices = load_problem_data()
@@ -22,4 +20,4 @@ for solution in solutions:
         solution, demand, datacenters, servers, selling_prices, seed=1741
     )
 
-    print(f"Solution score: {score}")
+    print(f"{f} - Solution score: {score}")
