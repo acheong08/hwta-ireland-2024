@@ -317,9 +317,34 @@ def solve(
     # Server utilization ratio of sum(min(demand, availability) / availability)/(len(servers) * len(Sensitivity))
     # To calculate this, we get the ratio of demand to availability at each timestamp
     # then we sum them up and divide by the number of timestamps
+    utilizations_ts = {
+        ts: cp.new_int_var(0, INFINITY, f"{ts}_util")
+        for ts in range(1, max(demand.time_step for demand in demands) + 1)
+    }
+    for ts in utilizations_ts:
+        # Get total demand for this timestamp
+        demand = sum(
+            demand_map[ts].get(sg, {sen: 0})[sen]
+            for sg in ServerGeneration
+            for sen in Sensitivity
+        )
+        # Get total availability for this timestamp
+        availability_ts = sum(
+            availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
+            for sg in ServerGeneration
+            for dc in datacenters
+        )
+        m = cp.new_int_var(0, INFINITY, f"{ts}_min_util_ts")
+        _ = cp.add_min_equality(m, [demand, availability_ts])
+        _ = cp.add_division_equality(utilizations_ts[ts], m * 100, availability_ts)
 
     # Maximize profit * normalized lifespan * utilization
-    _ = cp.maximize(total_revenue - total_cost)
+    le_measurement = cp.new_int_var(0, INFINITY, "le_measurement")
+    _ = cp.add_multiplication_equality(le_measurement), [
+        (total_revenue - total_cost),
+        sum(utilizations_ts[ts] for ts in utilizations_ts),
+    ]
+    _ = cp.maximize(le_measurement)
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 15 * 60

@@ -1,20 +1,21 @@
 # pyright: basic
-from constants import get_datacenters, get_servers
+from ortools.sat.python import cp_model
 
-for ts in range(1, 169):
-    dc_map = {dc.datacenter_id: dc for dc in get_datacenters()}
-    sg_map = {sg.server_generation: sg for sg in get_servers()}
-    print(ts, ":", end=" ")
-    for dc in get_datacenters():
-        for server in get_servers():
-            capacity = (
-                dc_map[dc.datacenter_id].slots_capacity
-                // sg_map[server.server_generation].slots_size
-            )
-            release_time = sg_map[server.server_generation].release_time
-            # If within release time
-            if release_time[1] >= ts >= release_time[0]:
-                print(capacity, end=" ")
-            else:
-                print(0, end=" ")
-    print()
+model = cp_model.CpModel()
+solver = cp_model.CpSolver()
+
+x = model.NewIntVar(0, 10, "x")
+y = model.NewIntVar(0, 10, "y")
+z = model.NewIntVar(0, 10**2, "z")
+model.add_division_equality(z, sum([x, y]), z)
+model.maximize(z)
+
+status = solver.Solve(model)
+if status == cp_model.OPTIMAL:
+    print("x =", solver.Value(x))
+    print("y =", solver.Value(y))
+    print("z =", solver.Value(z))
+else:
+    print(solver.status_name(status))
+    print(solver.response_stats())
+    print(solver.solution_info())
