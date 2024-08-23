@@ -3,7 +3,13 @@
 from evaluation import evaluation_function
 from utils import load_problem_data, load_solution
 
-solutions = ["./output/1741.json", "./data/solution_example.json"]
+solutions = [
+    "./output/test.json",
+    "./output/1741.json",
+    "./output/3163.json",
+    "./output/6053.json",
+    "./output/2237.json",
+]
 for solution in solutions:
     # LOAD SOLUTION
     solution = load_solution(solution)

@@ -3,16 +3,8 @@
 
 from ortools.sat.python import cp_model
 
-from .models import (
-    Action,
-    Datacenter,
-    Demand,
-    SellingPrices,
-    Sensitivity,
-    Server,
-    ServerGeneration,
-    SolutionEntry,
-)
+from .models import (Action, Datacenter, Demand, SellingPrices, Sensitivity,
+                     Server, ServerGeneration, SolutionEntry)
 
 # t = "timestep"
 # d = "datacenter"
@@ -118,9 +110,9 @@ def solve(
     # Ensure we buy something at ts 1
     _ = cp.add(
         sum(
-            action_model[1][dc][sg][Action.BUY]
-            for dc in action_model[1]
-            for sg in action_model[1][dc]
+            action_model[1][dc.datacenter_id][sg][Action.BUY]
+            for dc in datacenters
+            for sg in ServerGeneration
         )
         > 0
     )
@@ -176,15 +168,6 @@ def solve(
     for ts in availability:
         if ts == 0:
             continue
-        # Total availability must be at least 1 at all times
-        # _ = cp.add(
-        #     sum(
-        #         availability[ts][sg][dc]
-        #         for sg in ServerGeneration
-        #         for dc in availability[ts][sg]
-        #     )
-        #     > 0
-        # )
 
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
@@ -327,6 +310,7 @@ def solve(
     _ = cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 5 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (

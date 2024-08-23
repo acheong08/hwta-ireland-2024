@@ -73,4 +73,4 @@ if __name__ == "__main__":
                 amount=int(parts[4]),
             )
         )
-    save_solution(generate(entries, get_servers()), "data/test.json")
+    save_solution(generate(entries, get_servers()), "output/test.json")
