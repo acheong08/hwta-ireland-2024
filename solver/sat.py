@@ -318,7 +318,7 @@ def solve(
     # To calculate this, we get the ratio of demand to availability at each timestamp
     # then we sum them up and divide by the number of timestamps
     utilizations_ts = {
-        ts: cp.new_int_var(0, INFINITY, f"{ts}_util")
+        ts: cp.new_int_var(0, 100, f"{ts}_util")
         for ts in range(1, max(demand.time_step for demand in demands) + 1)
     }
     for ts in utilizations_ts:
