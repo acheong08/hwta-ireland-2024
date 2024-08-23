@@ -1,13 +1,19 @@
 # pyright: basic
 
 import os
+import sys
 
 from evaluation import evaluation_function
 from utils import load_problem_data, load_solution
 
 # List files in output directory
 solutions = [
-    f"./output/{f}" if f.endswith(".json") else None for f in os.listdir("output")
+    (
+        f"./{sys.argv[1] if len(sys.argv) == 2 else "output"}/{f}"
+        if f.endswith(".json")
+        else None
+    )
+    for f in os.listdir("output")
 ]
 
 for f in solutions:
