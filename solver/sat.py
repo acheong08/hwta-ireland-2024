@@ -3,8 +3,16 @@
 
 from ortools.sat.python import cp_model
 
-from .models import (Action, Datacenter, Demand, SellingPrices, Sensitivity,
-                     Server, ServerGeneration, SolutionEntry)
+from .models import (
+    Action,
+    Datacenter,
+    Demand,
+    SellingPrices,
+    Sensitivity,
+    Server,
+    ServerGeneration,
+    SolutionEntry,
+)
 
 # t = "timestep"
 # d = "datacenter"
@@ -307,6 +315,11 @@ def solve(
         for sg in revenues[ts]
         for sen in revenues[ts][sg]
     )
+    # Server utilization ratio of sum(min(demand, availability) / availability)/(len(servers) * len(Sensitivity))
+    # To calculate this, we get the ratio of demand to availability at each timestamp
+    # then we sum them up and divide by the number of timestamps
+
+    # Maximize profit * normalized lifespan * utilization
     _ = cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
