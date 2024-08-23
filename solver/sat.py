@@ -124,16 +124,6 @@ def solve(
                                 ot_mod.is_equal_to(1)
                             )
 
-    # Ensure we buy something at ts 1
-    _ = cp.add(
-        sum(
-            action_model[1][dc.datacenter_id][sg][Action.BUY]
-            for dc in datacenters
-            for sg in ServerGeneration
-        )
-        > 0
-    )
-
     # We need to calculate the number of servers dismissed for life expectancy reasons
     dismissed_servers = {
         t: {

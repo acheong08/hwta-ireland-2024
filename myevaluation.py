@@ -28,7 +28,12 @@ for f in solutions:
 
     # EVALUATE THE SOLUTION
     score = evaluation_function(
-        solution, demand, datacenters, servers, selling_prices, seed=1741
+        solution,
+        demand,
+        datacenters,
+        servers,
+        selling_prices,
+        seed=int(f.split("/")[-1].split(".")[0]),
     )
 
     print(f"Solution score: {score}")
