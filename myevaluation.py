@@ -6,6 +6,9 @@ import sys
 from evaluation import evaluation_function
 from utils import load_problem_data, load_solution
 
+if not os.path.exists("output"):
+    os.makedirs("output")
+
 # List files in output directory
 solutions = [
     (
