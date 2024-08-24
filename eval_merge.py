@@ -6,19 +6,19 @@ import sys
 from evaluation import evaluation_function
 from utils import load_problem_data, load_solution
 
-if len(sys.argv) != 3:
-    print("Usage: python eval_merge.py <dir1> <dir2>")
+if len(sys.argv) != 4:
+    print("Usage: python eval_merge.py <dir1> <dir2> <output>")
     sys.exit(1)
 
 # List files in output directory
 solutions = [
     (f"./{sys.argv[1]}/{f}" if f.endswith(".json") else None)
-    for f in os.listdir("output")
+    for f in os.listdir(sys.argv[1])
 ]
 
 # Create merged directory if it doesn't exist
-if not os.path.exists("merged"):
-    os.makedirs("merged")
+if not os.path.exists(sys.argv[3]):
+    os.makedirs(sys.argv[3])
 
 for f in solutions:
     if not f:
@@ -45,7 +45,7 @@ for f in solutions:
     if score > score2:
         print(f"Better solution in {sys.argv[1]}")
         # Save the better solution to "./merged"
-        os.system(f"cp {f} ./merged")
+        os.system(f"cp {f} ./{sys.argv[3]}")
     elif score < score2:
         print(f"Better solution in {sys.argv[2]}")
         os.system(f"cp ./{sys.argv[2]}/{seed}.json ./merged")
