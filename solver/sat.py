@@ -271,16 +271,16 @@ def solve(
     ):
         print(solver.solution_info())
         print(solver.response_stats())
-        # for ts in action_model:
-        #     if ts == 0:
-        #         continue
-        #     for dc in action_model[ts]:
-        #         for sg in action_model[ts][dc]:
-        #             for action in action_model[ts][dc][sg]:
-        #                 val = solver.value(action_model[ts][dc][sg][action])
-        #                 if val > 0:
-        #                     print(f"{ts} {dc} {sg} {action} {val}")
-        #                     solution.append(SolutionEntry(ts, dc, sg, action, val))
+        for ts in action_model:
+            if ts == 0:
+                continue
+            for dc in action_model[ts]:
+                for sg in action_model[ts][dc]:
+                    for action in action_model[ts][dc][sg]:
+                        val = solver.value(action_model[ts][dc][sg][action])
+                        if val > 0:
+                            # print(f"{ts} {dc} {sg} {action} {val}")
+                            solution.append(SolutionEntry(ts, dc, sg, action, val))
         # Ensure total availability at 0 is 0
         print("Profit:", solver.value(total_revenue) - solver.value(total_cost))
         return solution
