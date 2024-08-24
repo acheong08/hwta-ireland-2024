@@ -259,87 +259,10 @@ def solve(
         for sg in revenues[ts]
         for sen in revenues[ts][sg]
     )
-    # Server utilization ratio of sum(min(demand, availability) / availability)/(len(servers) * len(Sensitivity))
-    # To calculate this, we get the ratio of demand to availability at each timestamp
-    # then we sum them up and divide by the number of timestamps
-    utilization_ts = {
-        ts: cp.new_int_var(0, 100, f"{ts}_util")
-        for ts in range(1, max(demand.time_step for demand in demands) + 1)
-    }
-    utilization_fine = {
-        ts: {
-            dc.datacenter_id: {
-                sg: cp.new_int_var(0, 100, f"{ts}_{dc.datacenter_id}_{sg}_util")
-                for sg in ServerGeneration
-            }
-            for dc in datacenters
-        }
-        for ts in utilization_ts
-    }
-    for ts in utilization_fine:
-        total_availability_ts = cp.new_int_var(0, INFINITY, f"{ts}_avail")
-        _ = cp.add(
-            total_availability_ts
-            == sum(
-                availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
-                for sg in ServerGeneration
-                for dc in datacenters
-            )
-        )
-        _ = cp.add_division_equality(
-            utilization_ts[ts],
-            total_availability_ts,
-            len(datacenters) * len(ServerGeneration),
-        )
-
-        for dc in datacenters:
-            for sg in ServerGeneration:
-                # Get total demand for this timestamp
-                demand_ts: int = (
-                    demand_map.get(ts, {}).get(sg, {}).get(dc.latency_sensitivity, 0)
-                )
-                # Get total availability for this timestamp
-                availability_ts = cp.new_int_var(
-                    1, INFINITY, f"{ts}_{dc.datacenter_id}_{sg}_avail"
-                )
-                avail_sum = availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
-
-                if demand_ts == 0:
-                    _ = cp.add(utilization_fine[ts][dc.datacenter_id][sg] == 0)
-                else:
-                    _ = cp.add(availability_ts == avail_sum)
-
-                    m = cp.new_int_var(0, INFINITY, f"{ts}_min")
-                    _ = cp.add_min_equality(m, [demand_ts, availability_ts])
-                    _ = cp.add_division_equality(
-                        utilization_fine[ts][dc.datacenter_id][sg],
-                        m * 100,
-                        availability_ts,
-                    )
-    # Server utilization ratio of sum(min(demand, availability) / availability)/(len(servers) * len(Sensitivity))
-    # To calculate this, we get the ratio of demand to availability at each timestamp
-    # then we sum them up and divide by the number of timestamps
-
-    utilization_avg = cp.new_int_var(0, 100, "util_avg")
-    total_utilization = cp.new_int_var(
-        0,
-        INFINITY,
-        "total_util",
-    )
-    _ = cp.add(total_utilization == sum(utilization_ts[ts] for ts in utilization_ts))
-    _ = cp.add_division_equality(
-        utilization_avg,
-        total_utilization,
-        len(utilization_ts),
-    )
-    profit = cp.new_int_var(0, INFINITY, "profit")
-    _ = cp.add(profit == total_revenue - total_cost)
-    le_measure = cp.new_int_var(0, INFINITY, "le_measure")
-    _ = cp.add_multiplication_equality(le_measure, [profit, utilization_avg])
-    _ = cp.maximize(profit)
+    _ = cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 15 * 60
+    solver.parameters.max_time_in_seconds = 5 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (
@@ -360,8 +283,6 @@ def solve(
                             solution.append(SolutionEntry(ts, dc, sg, action, val))
         # Ensure total availability at 0 is 0
         print("Profit:", solver.value(total_revenue) - solver.value(total_cost))
-        print("Average Utilization:", solver.value(utilization_avg))
-        print("Le Measure:", solver.value(le_measure))
         return solution
     else:
         print(solver.status_name(status))
