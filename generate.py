@@ -132,10 +132,20 @@ class Solution:
                         raise Exception("Not enough buys to cancel out dismissals")
                     # Dismiss as much as possible
                     leftover = len(self.ids[datacenter_id][dismissal.server_generation])
+                    original = dismissal.amount
                     diff = dismissal.amount - leftover
                     dismissal.amount = leftover
                     self.add(dismissal)
-                    buys[dismissal.server_generation].amount -= diff
+                    if diff > 0:
+                        print(
+                            ts,
+                            datacenter_id,
+                            dismissal.server_generation,
+                            leftover,
+                            original,
+                            diff,
+                        )
+                        buys[dismissal.server_generation].amount -= diff
 
                 for server_generation in buys:
                     self.add(buys[server_generation])
@@ -174,8 +184,4 @@ if __name__ == "__main__":
             )
         )
     solution = generate(entries, get_servers())
-    for entry in solution.redone:
-        print(
-            f"{entry.timestep} {entry.datacenter_id} {entry.server_generation} {entry.action} {entry.amount}"
-        )
     save_solution(solution.solution(), "output/test.json")

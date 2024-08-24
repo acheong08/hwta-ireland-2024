@@ -34,5 +34,5 @@ for seed in seeds:
     # )
     generated = generate(solution, servers)
 
-    save_solution(generated, f"./output/{seed}.json")
+    save_solution(generated.solution(), f"./output/{seed}.json")
     break

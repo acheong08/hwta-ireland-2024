@@ -367,7 +367,7 @@ def solve(
     _ = cp.maximize(profit)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 5 * 60
+    solver.parameters.max_time_in_seconds = 10 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (
