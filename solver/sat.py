@@ -92,15 +92,6 @@ def solve(
     # Only one action (or less) can be taken per datacenter per timestep
     for ts in action_model:
         if ts == 0:
-            # Cannot dismiss servers at ts 0
-            _ = cp.add(
-                sum(
-                    action_model[ts][dc.datacenter_id][sg][Action.DISMISS]
-                    for dc in datacenters
-                    for sg in ServerGeneration
-                )
-                == 0
-            )
             continue
 
         for dc in action_model[ts]:
@@ -124,28 +115,6 @@ def solve(
                                 ot_mod.is_equal_to(1)
                             )
 
-    # We need to calculate the number of servers dismissed for life expectancy reasons
-    dismissed_servers = {
-        t: {
-            sg: {
-                dc.datacenter_id: cp.new_int_var(
-                    0,
-                    (dc_map[dc.datacenter_id].slots_capacity // sg_map[sg].slots_size),
-                    f"{t}_{sg}_{dc}_dismissed",
-                )
-                for dc in datacenters
-            }
-            for sg in ServerGeneration
-        }
-        for t in action_model
-    }
-    dismissed_servers[0] = {
-        sg: {
-            dc.datacenter_id: cp.new_int_var(0, 0, f"0_{sg}_{dc}_dismissed")
-            for dc in datacenters
-        }
-        for sg in ServerGeneration
-    }
     # Now we need to calculate the total availability of each type of server at each timestep
     # based on the sum of purchase amounts minus the sum of sell amounts
     # Customers don't really care about cost of energy and stuff like that. We can deal with that later
@@ -178,49 +147,25 @@ def solve(
 
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
-                # Find expired servers that were not dismissed
-                _ = cp.add(
-                    dismissed_servers[ts][server_generation][dc]
-                    == dismissed_servers[ts - 1][server_generation][dc]
-                    + action_model[ts][dc][server_generation][Action.DISMISS]
-                )
-                m = cp.new_int_var(0, INFINITY, f"{ts}_{server_generation}_{dc}_m")
-                if ts - sg_map[server_generation].life_expectancy >= 1:
-                    _ = cp.add_max_equality(
-                        m,
-                        [
-                            0,
-                            action_model[
-                                ts - sg_map[server_generation].life_expectancy
-                            ][dc][server_generation][Action.BUY]
-                            - dismissed_servers[ts - 1][server_generation][dc]
-                            + dismissed_servers[
-                                ts - sg_map[server_generation].life_expectancy - 1
-                            ][server_generation][dc],
-                        ],
-                    )
-                else:
-                    _ = cp.add(m == 0)
 
                 # Logic: we sum buy/sells for datacenters that match the sensitivity and subtract the sells
                 # We do this for all timesteps in the past
                 _ = cp.add(
                     # Calculate current sum
                     availability[ts][server_generation][dc]
-                    == (
-                        action_model[ts][dc][server_generation][Action.BUY]
-                        - action_model[ts][dc][server_generation][Action.DISMISS]
-                    )
+                    == (action_model[ts][dc][server_generation][Action.BUY])
                     # Take the previous timestep
                     + availability[ts - 1][server_generation][dc]
                     # Subtract the expired servers based on life expectancy
-                    - (m if ts > sg_map[server_generation].life_expectancy else 0)
+                    - (
+                        action_model[ts - sg_map[server_generation].life_expectancy][
+                            dc
+                        ][server_generation][Action.BUY]
+                        if ts > sg_map[server_generation].life_expectancy
+                        else 0
+                    )
                 )
-                # You can't sell more than you have (for the specific datacenter)
-                _ = cp.add(
-                    availability[ts][server_generation][dc]
-                    >= action_model[ts][dc][server_generation][Action.DISMISS]
-                )
+
     energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
     _ = cp.add(
         energy_cost
@@ -317,9 +262,70 @@ def solve(
     # Server utilization ratio of sum(min(demand, availability) / availability)/(len(servers) * len(Sensitivity))
     # To calculate this, we get the ratio of demand to availability at each timestamp
     # then we sum them up and divide by the number of timestamps
+    utilizations_ts = {
+        ts: {
+            dc.datacenter_id: {
+                sg: cp.new_int_var(0, 100, f"{ts}_{dc.datacenter_id}_{sg}_util")
+                for sg in ServerGeneration
+            }
+            for dc in datacenters
+        }
+        for ts in range(1, max(demand.time_step for demand in demands) + 1)
+    }
+    utilization_counter = 0
+    for ts in utilizations_ts:
+        for dc in datacenters:
+            for sg in ServerGeneration:
+                # Get total demand for this timestamp
+                demand_ts: int = (
+                    demand_map.get(ts, {}).get(sg, {}).get(dc.latency_sensitivity, 0)
+                )
+                # Get total availability for this timestamp
+                availability_ts = cp.new_int_var(1, INFINITY, f"{ts}_avail")
+                avail_sum = availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
 
-    # Maximize profit * normalized lifespan * utilization
-    _ = cp.maximize(total_revenue - total_cost)
+                if demand_ts == 0:
+                    _ = cp.add(utilizations_ts[ts][dc.datacenter_id][sg] == 0)
+                else:
+                    _ = cp.add(availability_ts == avail_sum)
+
+                    m = cp.new_int_var(0, INFINITY, f"{ts}_min")
+                    _ = cp.add_min_equality(m, [demand_ts, availability_ts])
+                    _ = cp.add_division_equality(
+                        utilizations_ts[ts][dc.datacenter_id][sg],
+                        m * 100,
+                        availability_ts,
+                    )
+                utilization_counter += 1
+    # Server utilization ratio of sum(min(demand, availability) / availability)/(len(servers) * len(Sensitivity))
+    # To calculate this, we get the ratio of demand to availability at each timestamp
+    # then we sum them up and divide by the number of timestamps
+
+    utilization_avg = cp.new_int_var(0, 100, "util_avg")
+    total_utilization = cp.new_int_var(
+        0,
+        INFINITY,
+        "total_util",
+    )
+    _ = cp.add(
+        total_utilization
+        == sum(
+            utilizations_ts[ts][dc][sg]
+            for ts in utilizations_ts
+            for dc in utilizations_ts[ts]
+            for sg in utilizations_ts[ts][dc]
+        )
+    )
+    _ = cp.add_division_equality(
+        utilization_avg,
+        total_utilization,
+        utilization_counter,
+    )
+    profit = cp.new_int_var(0, INFINITY, "profit")
+    _ = cp.add(profit == total_revenue - total_cost)
+    le_measure = cp.new_int_var(0, INFINITY, "le_measure")
+    _ = cp.add_multiplication_equality(le_measure, [profit, utilization_avg])
+    _ = cp.maximize(profit)
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 15 * 60
@@ -342,12 +348,9 @@ def solve(
                             print(f"{ts} {dc} {sg} {action} {val}")
                             solution.append(SolutionEntry(ts, dc, sg, action, val))
         # Ensure total availability at 0 is 0
-        print("Revenue:", solver.value(total_revenue))
-        print("Cost:", solver.value(total_cost))
         print("Profit:", solver.value(total_revenue) - solver.value(total_cost))
-        print("Energy Cost:", solver.value(energy_cost))
-        print("Maintenance Cost:", solver.value(maintenance_cost))
-        print("Buying Cost:", solver.value(buying_cost))
+        print("Average Utilization:", solver.value(utilization_avg))
+        print("Le Measure:", solver.value(le_measure))
         return solution
     else:
         print(solver.status_name(status))
