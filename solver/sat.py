@@ -323,31 +323,51 @@ def solve(
     }
     for ts in utilizations_ts:
         # Get total demand for this timestamp
-        demand = sum(
+        demand_ts: int = sum(
             demand_map[ts].get(sg, {sen: 0})[sen]
             for sg in ServerGeneration
             for sen in Sensitivity
         )
         # Get total availability for this timestamp
-        availability_ts = sum(
+        availability_ts = cp.new_int_var(1, INFINITY, f"{ts}_avail")
+        avail_sum = sum(
             availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
             for sg in ServerGeneration
             for dc in datacenters
         )
-        m = cp.new_int_var(0, INFINITY, f"{ts}_min_util_ts")
-        _ = cp.add_min_equality(m, [demand, availability_ts])
-        _ = cp.add_division_equality(utilizations_ts[ts], m * 100, availability_ts)
 
+        if demand_ts == 0:
+            _ = cp.add(utilizations_ts[ts] == 100)
+        else:
+            _ = cp.add(availability_ts == avail_sum)
+
+            m = cp.new_int_var(0, INFINITY, f"{ts}_min")
+            _ = cp.add_min_equality(m, [demand_ts, availability_ts])
+            _ = cp.add_division_equality(utilizations_ts[ts], m * 100, availability_ts)
+
+    utilization_avg = cp.new_int_var(0, 100, "util_avg")
+    total_utilization = cp.new_int_var(0, 100 * len(utilizations_ts), "total_util")
+    _ = cp.add(total_utilization == sum(utilizations_ts[ts] for ts in utilizations_ts))
+    _ = cp.add_division_equality(
+        utilization_avg,
+        total_utilization,
+        len(utilizations_ts),
+    )
+    profit = cp.new_int_var(0, INFINITY, "profit")
+    _ = cp.add(profit == total_revenue - total_cost)
     # Maximize profit * normalized lifespan * utilization
     le_measurement = cp.new_int_var(0, INFINITY, "le_measurement")
-    _ = cp.add_multiplication_equality(le_measurement), [
-        (total_revenue - total_cost),
-        sum(utilizations_ts[ts] for ts in utilizations_ts),
-    ]
-    _ = cp.maximize(le_measurement)
+    _ = cp.add_multiplication_equality(
+        le_measurement,
+        [
+            profit,
+            utilization_avg,
+        ],
+    )
+    _ = cp.maximize(profit)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 15 * 60
+    solver.parameters.max_time_in_seconds = 5 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (
@@ -366,6 +386,10 @@ def solve(
                         if val > 0:
                             print(f"{ts} {dc} {sg} {action} {val}")
                             solution.append(SolutionEntry(ts, dc, sg, action, val))
+        print(
+            "Average Utilization:",
+            solver.value(utilization_avg),
+        )
         # Ensure total availability at 0 is 0
         print("Revenue:", solver.value(total_revenue))
         print("Cost:", solver.value(total_cost))
@@ -373,6 +397,7 @@ def solve(
         print("Energy Cost:", solver.value(energy_cost))
         print("Maintenance Cost:", solver.value(maintenance_cost))
         print("Buying Cost:", solver.value(buying_cost))
+        print("Le Measurement:", solver.value(le_measurement))
         return solution
     else:
         print(solver.status_name(status))
