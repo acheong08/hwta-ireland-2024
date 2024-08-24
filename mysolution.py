@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from constants import get_datacenters, get_selling_prices, get_servers
-from evaluation import get_actual_demand
+from evaluation import get_actual_demand  # type: ignore[import]
 from generate import generate
 from seeds import known_seeds
 from solver.models import Demand
@@ -35,3 +35,4 @@ for seed in seeds:
     generated = generate(solution, servers)
 
     save_solution(generated, f"./output/{seed}.json")
+    break
