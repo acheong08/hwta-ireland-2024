@@ -33,6 +33,12 @@ def get_selling_prices() -> list[SellingPrices]:
     ]
     return p
 
+def get_demand():
+    try:
+        demand = pd.read_csv("data/demand.csv")
+        return demand
+    except Exception as e:
+        return None
 
 if __name__ == "__main__":
     print(get_datacenters())
