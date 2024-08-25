@@ -36,24 +36,24 @@ def generate(
                     }
                 )
                 counter += 1
-        elif entry.action == Action.DISMISS:
-            # Pop until we have no more expired servers
-            while (
-                ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
-                <= entry.timestep
-            ):
-                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
-            for _ in range(entry.amount):
-                server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
-                solution.append(
-                    {
-                        "time_step": entry.timestep,
-                        "datacenter_id": entry.datacenter_id,
-                        "server_id": server_id["id"],
-                        "server_generation": entry.server_generation.value,
-                        "action": "dismiss",
-                    }
-                )
+        # elif entry.action == Action.DISMISS:
+        #     # Pop until we have no more expired servers
+        #     while (
+        #         ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
+        #         <= entry.timestep
+        #     ):
+        #         _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
+        #     for _ in range(entry.amount):
+        #         server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
+        #         solution.append(
+        #             {
+        #                 "time_step": entry.timestep,
+        #                 "datacenter_id": entry.datacenter_id,
+        #                 "server_id": server_id["id"],
+        #                 "server_generation": entry.server_generation.value,
+        #                 "action": "dismiss",
+        #             }
+        #         )
     return solution
 
 
