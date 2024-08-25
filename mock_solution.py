@@ -9,22 +9,60 @@ import utils
 b = np.random.seed(50)
 a = np.array([100 for _ in range(21)])
 
-def calculate_partial_derivative(z, d, Z_list, D_list, p_list, iter):
+# check exampleVector.pdf for the encoding
+
+# util function
+def decode_selling_prices():
+    temp = get_selling_prices()
+    val = []
+    for i in range(len(temp)):
+        val.append(temp[i].selling_price)
+    return val
+
+def calculate_partial_derivative(Z_list, D_list, p_list, iter):
+    z = Z_list[iter]
+    d = D_list[iter]
+
     little_derivative = np.exp(-z) / (np.exp(-z) + np.exp(-d))
-    x_encoding = [np.log(np.exp(-z)+np.exp(-d)) for z, d in zip(Z_list, D_list)]
-    total_derivative = sum(x_encoding)*little_derivative #not the correct function as of yet
-    return total_derivative
+    x_z = -np.log(np.exp(-z)+np.exp(-d))
+    x_z_squared = x_z**2
 
-def total_derivative(Z_list, D_list, p_list, iter):
+    x_encoding = [(-np.log(np.exp(-z_i)+np.exp(-d_i))) for z_i, d_i in zip(Z_list, D_list)]
+
+    der_1 = 1/z * (little_derivative) * (sum(np.array(x_encoding) * np.array(p_list)) + x_z*p_list[iter]) 
+    der_2 = - (x_z) / x_z_squared * (sum(np.array(x_encoding) * np.array(p_list)) - x_z*p_list[iter] + x_z_squared*p_list[iter])
+    der3 = p_list[iter] * little_derivative * (sum(np.array(x_encoding) / np.array(Z_list)) - x_z/Z_list[iter])
+
+    return der_1 + der_2 + der3
+
+def total_derivative(Z_list, D_list, p_list):
     total_derivative = []
-    for (i,j) in zip(Z_list, D_list):
-        total_derivative.append(calculate_partial_derivative(i, j, Z_list, D_list, p_list, iter))
+
+    for i in Z_list:
+        total_derivative.append(calculate_partial_derivative(Z_list[i], D_list[i], Z_list, D_list, p_list, i))
     total_derivative = np.array(total_derivative)
+
     return total_derivative
 
-def gradient_descent(Z_list, D_list, p_list, iter):
-    total_derivative = total_derivative(Z_list, D_list, p_list, iter)
-    for i in range(10):
+def improved_gradient_descent(Z_list, D_list, p_list):
+    total_derivative = total_derivative(Z_list, D_list, p_list)
+    scores = [Z_list]
+    Z_list = Z_list - total_derivative
+    scores.append(Z_list)
+    for i in range(20):
+        alpha = 1
         Z_list = Z_list - total_derivative
+        scores.append(Z_list)
+        if (np.fabs(scores[i+2] - scores[i+1]) > np.fabs(scores[i+1] - scores[i])):
+            alpha = alpha * 0.8
+        else:
+            alpha = alpha * 1.25
     return Z_list
+
+def main():
+    p_list = decode_selling_prices()
+    print(p_list)
+
+if __name__ == "__main__":
+    main()
 
