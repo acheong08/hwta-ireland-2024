@@ -3,7 +3,7 @@
 
 import pandas as pd
 
-from solver.models import Datacenter, SellingPrices, Server
+from solver.models import Datacenter, SellingPrices, Server, Demand
 
 
 def get_datacenters() -> list[Datacenter]:
