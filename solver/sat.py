@@ -89,32 +89,6 @@ def solve(
         )
     )
 
-    # Only one action (or less) can be taken per datacenter per timestep
-    for ts in action_model:
-        if ts == 0:
-            continue
-
-        for dc in action_model[ts]:
-            for server_gen in action_model[ts][dc]:
-                for action in Action:
-                    cur_mod = cp.new_int_var(0, 1, f"{ts}_{dc}_{action}")
-                    _ = cp.add_modulo_equality(
-                        cur_mod, action_model[ts][dc][server_gen][action], 2
-                    )
-                    for other_action in Action:
-                        if other_action != action:
-                            ot_mod = cp.new_int_var(
-                                0, 1, f"{ts}_{dc}_{action}_{other_action}"
-                            )
-                            _ = cp.add_modulo_equality(
-                                ot_mod,
-                                action_model[ts][dc][server_gen][other_action],
-                                2,
-                            )
-                            _ = cp.add(cur_mod == 0).only_enforce_if(
-                                ot_mod.is_equal_to(1)
-                            )
-
     # Now we need to calculate the total availability of each type of server at each timestep
     # based on the sum of purchase amounts minus the sum of sell amounts
     # Customers don't really care about cost of energy and stuff like that. We can deal with that later
