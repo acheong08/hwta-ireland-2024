@@ -249,6 +249,7 @@ def solve(
         print(solver.solution_info())
         print(solver.response_stats())
         # Get profit at every timestep
+        total_profit = 0
         for ts in action_model:
             # Calculate revenue
             revenue = sum(
@@ -278,7 +279,9 @@ def solve(
                 for sg in action_model[ts][dc]
             )
 
-            print(f"{ts} -R:{revenue/100} C:{(maintenance+energy+buying)/100}")
+            print(f"{ts} - {revenue/100} {(maintenance+energy+buying)/100}")
+            total_profit += (revenue / 100) - ((maintenance + energy + buying) / 100)
+        print("Calculated profit:", total_profit)
         print("Profit:", solver.value(total_revenue) - solver.value(total_cost))
         return solution
     else:
