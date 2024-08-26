@@ -23,6 +23,7 @@ logger.addHandler(file_handler)
 formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
 file_handler.setFormatter(formatter)
 
+#NN
 class ServerFleetEnvironment:
     def __init__(self, datacenters, servers, selling_prices, demand):
         self.datacenters = datacenters
@@ -38,25 +39,14 @@ class ServerFleetEnvironment:
         return self.get_state()
 
     def step(self, action):
-        # Apply action
         self.apply_action(action)
-        
-        # Update state
         next_state = self.get_state()
-        
-        # Calculate reward
         reward = self.calculate_reward()
-        
-        # Check if done
         done = self.time_step >= get_known('time_steps')
-        
-        # Increment time step
         self.time_step += 1
-        
         return next_state, reward, done
 
     def get_state(self):
-        # Create state representation
         state = {
             'time_step': self.time_step,
             'fleet': self.fleet,
@@ -65,7 +55,6 @@ class ServerFleetEnvironment:
         return state
 
     def apply_action(self, action):
-        # Apply the action to the fleet
         self.fleet = update_fleet(self.time_step, self.fleet, action)
 
     def calculate_reward(self):
@@ -76,7 +65,6 @@ class ServerFleetEnvironment:
         P = get_profit(D, Z, self.selling_prices, self.fleet)
         return U * L * P
 
-# DQN model
 class DQN(tf.keras.Model):
     def __init__(self, state_size, action_size):
         super(DQN, self).__init__()
@@ -89,7 +77,6 @@ class DQN(tf.keras.Model):
         x = self.dense2(x)
         return self.dense3(x)
 
-# Training function
 def train_model(env, model, episodes, epsilon=0.1):
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     loss_fn = tf.keras.losses.MeanSquaredError()
@@ -100,7 +87,6 @@ def train_model(env, model, episodes, epsilon=0.1):
         done = False
 
         while not done:
-            # Epsilon-greedy action selection
             if np.random.random() < epsilon:
                 action = np.random.randint(0, model.output.shape[1])
             else:
@@ -110,7 +96,6 @@ def train_model(env, model, episodes, epsilon=0.1):
             next_state, reward, done = env.step(action)
             total_reward += reward
 
-            # Train the model
             with tf.GradientTape() as tape:
                 q_values = model(np.array([state]))
                 next_q_values = model(np.array([next_state]))
@@ -126,7 +111,6 @@ def train_model(env, model, episodes, epsilon=0.1):
 
     return model
 
-# Evaluation and solution generation
 def evaluate_and_generate_solution(model, env, seed):
     np.random.seed(seed)
     state = env.reset()
@@ -136,13 +120,12 @@ def evaluate_and_generate_solution(model, env, seed):
         q_values = model(np.array([state]))
         action = np.argmax(q_values[0])
         
-        # Convert action to the required format
         action_dict = {
             'time_step': t + 1,
             'datacenter_id': get_known('datacenter_id')[action % len(get_known('datacenter_id'))],
             'server_generation': get_known('server_generation')[action // len(get_known('datacenter_id'))],
             'server_id': f"server_{t}_{action}",
-            'action': 'buy'  # For simplicity, we're only using 'buy' action here
+            'action': 'buy'
         }
         solution.append(action_dict)
         
@@ -151,36 +134,27 @@ def evaluate_and_generate_solution(model, env, seed):
         if done:
             break
 
-    # Convert solution to DataFrame
     solution_df = pd.DataFrame(solution)
     return solution_df
 
-# Main execution
 if __name__ == "__main__":
-    # Load data
     datacenters = get_datacenters()
     servers = get_servers()
     selling_prices = get_selling_prices()
     demand = get_demand()
 
-    # Create environment
     env = ServerFleetEnvironment(datacenters, servers, selling_prices, demand)
 
-    # Define state and action sizes
-    state_size = 10  # You need to define this based on your state representation
+    state_size = 168
     action_size = len(get_known('datacenter_id')) * len(get_known('server_generation'))
 
-    # Create and train model
     model = DQN(state_size, action_size)
     trained_model = train_model(env, model, episodes=1000)
 
-    # Generate solutions for training seeds
-    for seed in range(10):  # Assuming 10 training seeds
+    for seed in range(168):
         solution = evaluate_and_generate_solution(trained_model, env, seed)
         
-        # Evaluate solution
         score = evaluation_function(solution, demand, datacenters, servers, selling_prices, seed=seed)
         print(f"Seed {seed}, Score: {score}")
 
-        # Save solution
         solution.to_json(f"{seed}.json", orient='records')
