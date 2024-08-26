@@ -210,12 +210,12 @@ def solve(
             for sen in revenues[ts][sg]:
                 total_availability = sum(
                     (
-                        availability[ts][sg][dc.datacenter_id]
+                        availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
                         if dc.latency_sensitivity == sen
                         else 0
                     )
                     for dc in datacenters
-                ) * int(sg_map[sg].capacity / sg_map[sg].slots_size)
+                )
                 demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
@@ -258,6 +258,12 @@ def solve(
                         solution.append(SolutionEntry(ts, dc, sg, Action.BUY, val))
         total_profit = 0
         for ts in action_model:
+            # Calculate total capacity
+            capacity = sum(
+                solver.value(availability[ts][sg][dc]) * sg_map[sg].capacity
+                for sg in availability[ts]
+                for dc in availability[ts][sg]
+            )
             # Calculate revenue
             revenue = sum(
                 solver.value(revenues[ts][sg][sen])
@@ -286,7 +292,9 @@ def solve(
                 for sg in action_model[ts][dc]
             )
 
-            print(f"{ts} -R:{revenue/100} C:{(maintenance+energy+buying)/100}")
+            print(
+                f"{ts} -R:{revenue/100} C:{(maintenance+energy+buying)/100} - Capacity: {capacity}"
+            )
             total_profit += (revenue / 100) - ((maintenance + energy + buying) / 100)
         print(total_profit, solver.value(total_revenue), solver.value(total_cost))
         print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)

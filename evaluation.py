@@ -200,6 +200,8 @@ def get_capacity_by_server_generation_latency_sensitivity(fleet):
     Z = Z.map(adjust_capacity_by_failure_rate, na_action="ignore")
     Z = Z.fillna(0, inplace=False)
 
+    print(f" Capacity: {Z.sum().sum()} ", end="")
+
     return Z
 
 
