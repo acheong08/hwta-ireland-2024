@@ -257,7 +257,7 @@ def get_profit(D, Z, selling_prices, fleet):
     R = get_revenue(D, Z, selling_prices)
     C = get_cost(fleet)
     print(R, C)
-    return R - C
+    return R - C, R, C
 
 
 def get_revenue(D, Z, selling_prices):
@@ -364,6 +364,8 @@ def get_evaluation(
     # DEMAND DATA PREPARATION
     demand = get_actual_demand(demand)
     total_profit = 0
+    total_revenue = 0
+    total_cost = 0
 
     OBJECTIVE = 0
     FLEET = pd.DataFrame()
@@ -397,7 +399,7 @@ def get_evaluation(
 
             L = get_normalized_lifespan(FLEET)
             print(f"{ts} - ", end="")
-            P = get_profit(D, Zf, selling_prices, FLEET)
+            P, R, C = get_profit(D, Zf, selling_prices, FLEET)
             o = U * L * P
             OBJECTIVE += o
 
@@ -413,6 +415,8 @@ def get_evaluation(
                 "P": round(P, 2),
             }
             total_profit += P
+            total_revenue += R
+            total_cost += C
         else:
             # PREPARE OUTPUT
             output = {
@@ -426,7 +430,7 @@ def get_evaluation(
         if verbose:
             # print(output)
             pass
-    print(total_profit)
+    print(total_profit, total_revenue, total_cost)
 
     return OBJECTIVE
 

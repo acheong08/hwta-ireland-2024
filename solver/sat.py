@@ -4,6 +4,7 @@
 from ortools.sat.python import cp_model
 
 from .models import (
+    Action,
     Datacenter,
     Demand,
     SellingPrices,
@@ -81,6 +82,7 @@ def solve(
             ]
             == action.amount
         )
+
     # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, INFINITY, "cost")
     _ = cp.add(
@@ -206,17 +208,14 @@ def solve(
 
         for sg in revenues[ts]:
             for sen in revenues[ts][sg]:
-                total_availability = (
-                    sum(
-                        (
-                            availability[ts][sg][dc.datacenter_id]
-                            if dc.latency_sensitivity == sen
-                            else 0
-                        )
-                        for dc in datacenters
+                total_availability = sum(
+                    (
+                        availability[ts][sg][dc.datacenter_id]
+                        if dc.latency_sensitivity == sen
+                        else 0
                     )
-                    * sg_map[sg].capacity
-                )
+                    for dc in datacenters
+                ) * int(sg_map[sg].capacity / sg_map[sg].slots_size)
                 demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
@@ -227,7 +226,7 @@ def solve(
                         total_availability * sg_map[sg].capacity,
                     ],  # Each server has *capacity* number of cpu/gpu that satisfies demand
                 )
-                _ = cp.add(revenues[ts][sg][sen] == m * int(sp_map[sg][sen] / 2))
+                _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
 
     total_cost = cp.new_int_var(0, INFINITY, "total_cost")
     _ = cp.add(total_cost == buying_cost + energy_cost + maintenance_cost)
@@ -248,7 +247,15 @@ def solve(
     ):
         print(solver.solution_info())
         print(solver.response_stats())
-        # Get profit at every timestep
+        for ts in action_model:
+            if ts == 0:
+                continue
+            for dc in action_model[ts]:
+                for sg in action_model[ts][dc]:
+                    val = solver.value(action_model[ts][dc][sg])
+                    if val > 0:
+                        # print(f"{ts} {dc} {sg} {action} {val}")
+                        solution.append(SolutionEntry(ts, dc, sg, Action.BUY, val))
         total_profit = 0
         for ts in action_model:
             # Calculate revenue
@@ -279,13 +286,11 @@ def solve(
                 for sg in action_model[ts][dc]
             )
 
-            print(f"{ts} - {revenue/100} {(maintenance+energy+buying)/100}")
+            print(f"{ts} -R:{revenue/100} C:{(maintenance+energy+buying)/100}")
             total_profit += (revenue / 100) - ((maintenance + energy + buying) / 100)
-        print("Calculated profit:", total_profit)
-        print(
-            "Profit:",
-            solver.value(total_revenue) / 100 - solver.value(total_cost) / 100,
-        )
+        print(total_profit, solver.value(total_revenue), solver.value(total_cost))
+        print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)
+
         return solution
     else:
         print(solver.status_name(status))
