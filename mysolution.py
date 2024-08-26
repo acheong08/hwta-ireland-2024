@@ -7,10 +7,13 @@ import numpy as np
 import pandas as pd
 
 import reverse
+from constants import get_datacenters, get_selling_prices, get_servers
 from evaluation import get_actual_demand  # type: ignore[import]
 from seeds import known_seeds
 from solver.models import Demand
-from utils import save_solution  # type: ignore[import]
+from solver.sat import solve
+
+# from utils import save_solution  #. type: ignore[import]
 
 seeds: list[int] = known_seeds("training")
 
@@ -26,9 +29,8 @@ for seed in seeds:
         )
     # solution = solve(parsed_demand, get_datacenters(), get_selling_prices(), servers)
     solution = reverse.get_solution()
-    # Save the solution for reuse
-    # json.dump(
-    #     [sol.to_dict() for sol in solution], open(f"./output/{seed}_solution.json", "w")
-    # )
-
-    save_solution(solution, f"./output/{seed}.json")
+    _ = solve(
+        solution, parsed_demand, get_datacenters(), get_selling_prices(), get_servers()
+    )
+    # Solve for solution
+    break
