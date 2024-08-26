@@ -282,7 +282,10 @@ def solve(
             print(f"{ts} - {revenue/100} {(maintenance+energy+buying)/100}")
             total_profit += (revenue / 100) - ((maintenance + energy + buying) / 100)
         print("Calculated profit:", total_profit)
-        print("Profit:", solver.value(total_revenue) - solver.value(total_cost))
+        print(
+            "Profit:",
+            solver.value(total_revenue) / 100 - solver.value(total_cost) / 100,
+        )
         return solution
     else:
         print(solver.status_name(status))
