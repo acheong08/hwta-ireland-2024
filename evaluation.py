@@ -380,7 +380,6 @@ def get_evaluation(
     FLEET = pd.DataFrame()
     # if ts-related fleet is empty then current fleet is ts-fleet
     for ts in range(1, time_steps + 1):
-        print(f"{ts} - ", end="")
 
         # GET THE ACTUAL DEMAND AT TIMESTEP ts
         D = get_time_step_demand(demand, ts)
