@@ -8,7 +8,7 @@ from solver.models import Action, ServerGeneration, SolutionEntry
 
 def get_solution():
 
-    data: list[dict[str, int | str]] = json.load(open("data/solution_example.json"))
+    data: list[dict[str, int | str]] = json.load(open("output/1741.json"))
 
     aggregate: dict[int, dict[str, dict[ServerGeneration, int]]] = {
         ts: {

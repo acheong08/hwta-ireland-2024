@@ -62,15 +62,14 @@ if __name__ == "__main__":
     entries: list[SolutionEntry] = []
     for line in solution.readlines():
         parts = line.split()
-        action = "buy" if parts[3] == "Action.BUY" else "dismiss"
         server_generation = parts[2].split(".")[-1].replace("_", ".")
         entries.append(
             SolutionEntry(
                 timestep=int(parts[0]),
                 datacenter_id=parts[1],
                 server_generation=ServerGeneration(server_generation),
-                action=Action(action),
-                amount=int(parts[4]),
+                action=Action.BUY,
+                amount=int(parts[3]),
             )
         )
     save_solution(generate(entries, get_servers()), "output/test.json")

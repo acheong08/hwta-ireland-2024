@@ -82,6 +82,17 @@ def solve(
             ]
             == action.amount
         )
+        # Set everything else to 0
+        for ts in range(1, 169):
+            for dc, sg in zip(datacenters, ServerGeneration):
+                if (
+                    ts == action.timestep
+                    and sg == action.server_generation
+                    and dc.datacenter_id == action.datacenter_id
+                ):
+                    continue
+
+                _ = cp.add(action_model[ts][dc.datacenter_id][sg] == 0)
 
     # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, INFINITY, "cost")
@@ -141,7 +152,7 @@ def solve(
                         action_model[
                             ts - sg_map[server_generation].life_expectancy + 1
                         ][dc][server_generation]
-                        if ts > sg_map[server_generation].life_expectancy
+                        if (ts - sg_map[server_generation].life_expectancy + 1) > 0
                         else 0
                     )
                 )
@@ -216,16 +227,18 @@ def solve(
                     )
                     for dc in datacenters
                 )
-                demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
+                demand = demand_map[ts].get(sg, {sen: 0})[sen]
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
                 _ = cp.add_min_equality(
                     m,
                     [
                         demand,
-                        total_availability * sg_map[sg].capacity,
+                        total_availability,
                     ],  # Each server has *capacity* number of cpu/gpu that satisfies demand
                 )
+                if ts == 1 and sen == Sensitivity.LOW and sg == ServerGeneration.CPU_S1:
+                    print(demand)
                 _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
 
     total_cost = cp.new_int_var(0, INFINITY, "total_cost")
