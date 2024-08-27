@@ -175,18 +175,10 @@ if __name__ == "__main__":
     selling_prices = get_selling_prices()
     demand = get_demand()
 
-    env = ServerFleetEnvironment(datacenters, servers, selling_prices, demand)
-
-    state_size = 168
-    action_size = len(get_known('datacenter_id')) * len(get_known('server_generation'))
-
-    model = DQN(state_size, action_size)
-    trained_model = train_model(env, model, episodes=1000)
-
-    for seed in range(168):
-        solution = evaluate_and_generate_solution(trained_model, env, seed)
-
-        score = evaluation_function(solution, demand, datacenters, servers, selling_prices, seed=seed)
-        print(f"Seed {seed}, Score: {score}")
-
-        solution.to_json(f"{seed}.json", orient='records')
+    print(datacenters)
+    print("-----------------------------------------------------------------------------------------------")
+    print(servers)
+    print("-----------------------------------------------------------------------------------------------")
+    print(selling_prices)
+    print("-----------------------------------------------------------------------------------------------")
+    print(demand)
