@@ -16,6 +16,7 @@ solutions = [
     for f in os.listdir("output")
 ]
 
+total_score = 0
 for f in solutions:
     if not f:
         continue
@@ -27,7 +28,7 @@ for f in solutions:
     demand, datacenters, servers, selling_prices = load_problem_data()
 
     # EVALUATE THE SOLUTION
-    score = evaluation_function(
+    score: int = evaluation_function(  # type: ignore[]
         solution,
         demand,
         datacenters,
@@ -36,4 +37,6 @@ for f in solutions:
         seed=int(f.split("/")[-1].split(".")[0]),
     )
 
-    print(f"Solution score: {score}")
+    print(f"{score}")
+    total_score += score
+print(f"Average score: {total_score/(len(solutions)-1)}")
