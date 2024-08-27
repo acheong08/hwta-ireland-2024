@@ -149,10 +149,10 @@ def solve(
                     + availability[ts - 1][server_generation][dc]
                     # Subtract the expired servers based on life expectancy
                     - (
-                        action_model[
-                            ts - sg_map[server_generation].life_expectancy + 1
-                        ][dc][server_generation]
-                        if (ts - sg_map[server_generation].life_expectancy + 1) > 0
+                        action_model[ts - sg_map[server_generation].life_expectancy][
+                            dc
+                        ][server_generation]
+                        if (ts - sg_map[server_generation].life_expectancy) > 0
                         else 0
                     )
                 )
