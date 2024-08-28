@@ -130,10 +130,17 @@ def solve(
                     + availability[ts - 1][server_generation][dc]
                     # Subtract the expired servers based on life expectancy
                     - (
+<<<<<<< HEAD
                         action_model[
                             ts - sg_map[server_generation].life_expectancy + 1
                         ][dc][server_generation]
                         if ts > sg_map[server_generation].life_expectancy
+=======
+                        action_model[ts - sg_map[server_generation].life_expectancy][
+                            dc
+                        ][server_generation]
+                        if (ts - sg_map[server_generation].life_expectancy) > 0
+>>>>>>> 81bf45295d6f2ed551b2cf8641859e4d65157161
                         else 0
                     )
                 )
@@ -202,20 +209,29 @@ def solve(
             for sen in revenues[ts][sg]:
                 total_availability = sum(
                     (
+<<<<<<< HEAD
                         availability[ts][sg][dc.datacenter_id]
+=======
+                        availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
+>>>>>>> 81bf45295d6f2ed551b2cf8641859e4d65157161
                         if dc.latency_sensitivity == sen
                         else 0
                     )
                     for dc in datacenters
+<<<<<<< HEAD
                 ) * int(sg_map[sg].capacity / sg_map[sg].slots_size)
                 demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
+=======
+                )
+                demand = demand_map[ts].get(sg, {sen: 0})[sen]
+>>>>>>> 81bf45295d6f2ed551b2cf8641859e4d65157161
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
                 _ = cp.add_min_equality(
                     m,
                     [
                         demand,
-                        total_availability * sg_map[sg].capacity,
+                        total_availability,
                     ],  # Each server has *capacity* number of cpu/gpu that satisfies demand
                 )
                 _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
