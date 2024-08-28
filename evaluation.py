@@ -206,6 +206,7 @@ def get_capacity_by_server_generation_latency_sensitivity(fleet):
     Z = Z[cols]
     Z = Z.map(adjust_capacity_by_failure_rate, na_action="ignore")
     Z = Z.fillna(0, inplace=False)
+
     return Z
 
 
@@ -262,7 +263,8 @@ def get_profit(D, Z, selling_prices, fleet):
     # CALCULATE OBJECTIVE P = PROFIT
     R = get_revenue(D, Z, selling_prices)
     C = get_cost(fleet)
-    return R - C
+    print(R, C)
+    return R - C, R, C
 
 
 def get_revenue(D, Z, selling_prices):
@@ -434,7 +436,9 @@ def get_evaluation(
             }
 
         if verbose:
-            print(output)
+            # print(output)
+            pass
+    print(total_profit, total_revenue, total_cost)
 
     return OBJECTIVE
 
