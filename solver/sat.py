@@ -1,6 +1,8 @@
 # pyright: reportAssignmentType=false
 
 
+import math
+
 from ortools.sat.python import cp_model
 
 from .models import (
@@ -22,6 +24,25 @@ from .models import (
 
 INFINITY: int = 2**43
 
+MIN_TS = 1
+MAX_TS = 168
+
+
+def total_maintenance_cost(
+    avg_maint: int, life_expectancy: int, current_timestep: int
+) -> int:
+    total_cost = 0
+    for ts in range(
+        current_timestep, min(current_timestep + life_expectancy, MAX_TS) + 1
+    ):
+        lifespan = ts - current_timestep + 1
+        total_cost += avg_maint * (
+            1
+            + (1.5 * lifespan / life_expectancy)
+            * math.log(1.5 * lifespan / life_expectancy, 2)
+        )
+    return int(total_cost)
+
 
 def solve(
     demands: list[Demand],
@@ -29,7 +50,6 @@ def solve(
     selling_prices: list[SellingPrices],
     servers: list[Server],
 ) -> list[SolutionEntry]:
-
     sg_map = {server.server_generation: server for server in servers}
     dc_map = {dc.datacenter_id: dc for dc in datacenters}
     demand_map: dict[int, dict[ServerGeneration, dict[Sensitivity, int]]] = {}
@@ -48,6 +68,15 @@ def solve(
             sp_map[sp.server_generation] = {}
 
         sp_map[sp.server_generation][sp.latency_sensitivity] = sp.selling_price
+    total_maint_map = {
+        ts: {
+            sg: total_maintenance_cost(
+                sg_map[sg].average_maintenance_fee, sg_map[sg].life_expectancy, ts
+            )
+            for sg in ServerGeneration
+        }
+        for ts in range(MIN_TS, MAX_TS + 1)
+    }
     cp = cp_model.CpModel()
     """
     The action model is what will be solved by SAT. It decides when to buy, sell, or move servers.
@@ -72,7 +101,7 @@ def solve(
             }
             for datacenter in datacenters
         }
-        for timestep in range(1, max(demand.time_step for demand in demands) + 1)
+        for timestep in range(1, MAX_TS + 1)
     }
 
     # We calculate the total cost of buying servers by multiplying to volume to price
@@ -119,7 +148,6 @@ def solve(
 
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
-
                 # Logic: we sum buy/sells for datacenters that match the sensitivity and subtract the sells
                 # We do this for all timesteps in the past
                 _ = cp.add(
@@ -130,17 +158,10 @@ def solve(
                     + availability[ts - 1][server_generation][dc]
                     # Subtract the expired servers based on life expectancy
                     - (
-<<<<<<< HEAD
-                        action_model[
-                            ts - sg_map[server_generation].life_expectancy + 1
-                        ][dc][server_generation]
-                        if ts > sg_map[server_generation].life_expectancy
-=======
                         action_model[ts - sg_map[server_generation].life_expectancy][
                             dc
                         ][server_generation]
                         if (ts - sg_map[server_generation].life_expectancy) > 0
->>>>>>> 81bf45295d6f2ed551b2cf8641859e4d65157161
                         else 0
                     )
                 )
@@ -164,10 +185,10 @@ def solve(
     _ = cp.add(
         maintenance_cost
         == sum(
-            availability[ts][sg][dc] * sg_map[sg].average_maintenance_fee
-            for ts in availability
-            for sg in availability[ts]
-            for dc in availability[ts][sg]
+            action_model[ts][dc][sg] * total_maint_map[ts][sg]
+            for ts in action_model
+            for dc in action_model[ts]
+            for sg in action_model[ts][dc]
         )
     )
 
@@ -209,22 +230,13 @@ def solve(
             for sen in revenues[ts][sg]:
                 total_availability = sum(
                     (
-<<<<<<< HEAD
-                        availability[ts][sg][dc.datacenter_id]
-=======
                         availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
->>>>>>> 81bf45295d6f2ed551b2cf8641859e4d65157161
                         if dc.latency_sensitivity == sen
                         else 0
                     )
                     for dc in datacenters
-<<<<<<< HEAD
-                ) * int(sg_map[sg].capacity / sg_map[sg].slots_size)
-                demand = cp.new_constant(demand_map[ts].get(sg, {sen: 0})[sen])
-=======
                 )
                 demand = demand_map[ts].get(sg, {sen: 0})[sen]
->>>>>>> 81bf45295d6f2ed551b2cf8641859e4d65157161
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
                 _ = cp.add_min_equality(

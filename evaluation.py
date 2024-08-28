@@ -206,7 +206,6 @@ def get_capacity_by_server_generation_latency_sensitivity(fleet):
     Z = Z[cols]
     Z = Z.map(adjust_capacity_by_failure_rate, na_action="ignore")
     Z = Z.fillna(0, inplace=False)
-
     return Z
 
 
@@ -217,7 +216,7 @@ def get_valid_columns(cols1, cols2):
 
 def adjust_capacity_by_failure_rate(x):
     # HELPER FUNCTION TO CALCULATE THE FAILURE RATE f
-    return int(x * 1 - truncweibull_min.rvs(0.3, 0.05, 0.1, size=1).item())
+    return int(x * (1 - truncweibull_min.rvs(0.3, 0.05, 0.1, size=1).item()))
 
 
 def check_datacenter_slots_size_constraint(fleet):
@@ -263,8 +262,7 @@ def get_profit(D, Z, selling_prices, fleet):
     # CALCULATE OBJECTIVE P = PROFIT
     R = get_revenue(D, Z, selling_prices)
     C = get_cost(fleet)
-    print(R, C)
-    return R - C, R, C
+    return R - C
 
 
 def get_revenue(D, Z, selling_prices):
@@ -436,9 +434,7 @@ def get_evaluation(
             }
 
         if verbose:
-            # print(output)
-            pass
-    print(total_profit, total_revenue, total_cost)
+            print(output)
 
     return OBJECTIVE
 
