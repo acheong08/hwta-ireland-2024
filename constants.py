@@ -3,7 +3,7 @@
 
 import pandas as pd
 
-from solver.models import Datacenter, SellingPrices, Server
+from solver.models import Datacenter, SellingPrices, Server, Demand
 
 
 def get_datacenters() -> list[Datacenter]:
@@ -32,6 +32,15 @@ def get_selling_prices() -> list[SellingPrices]:
         for _, sp in selling_prices.iterrows()
     ]
     return p
+
+def get_demand() -> list[Demand]:
+    demand = pd.read_csv("data/demand.csv")
+
+    dm = [
+        Demand(**dm).setup()  # pyright: ignore[]
+        for _, dm in demand.iterrows()
+    ]
+    return dm
 
 
 if __name__ == "__main__":
