@@ -39,4 +39,4 @@ for f in solutions:
 
     print(f"{score}")
     total_score += score
-print(f"Average score: {total_score/(len(solutions)-1)}")
+print(f"Average score: {total_score/(len(solutions))}")
