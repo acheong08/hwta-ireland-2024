@@ -248,8 +248,8 @@ def solve(
                 )
                 _ = cp.add_division_equality(
                     adjusted_availability,
-                    total_availability * int(0.927425 * 1000000),
-                    1000000,
+                    total_availability * int(0.9275 * 1000),
+                    1000,
                 )
                 demand = demand_map[ts].get(sg, {sen: 0})[sen]
                 # Get amount of demand that can be satisfied
@@ -274,7 +274,7 @@ def solve(
     cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 5 * 60
+    # solver.parameters.max_time_in_seconds = 5 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (
@@ -290,41 +290,7 @@ def solve(
                 for sg in action_model[ts][dc]:
                     val = solver.value(action_model[ts][dc][sg])
                     if val > 0:
-                        # print(f"{ts} {dc} {sg} {action} {val}")
                         solution.append(SolutionEntry(ts, dc, sg, Action.BUY, val))
-        # total_profit = 0
-        # for ts in action_model:
-        #     # Calculate revenue
-        #     revenue = sum(
-        #         solver.value(revenues[ts][sg][sen])
-        #         for sg in revenues[ts]
-        #         for sen in revenues[ts][sg]
-        #     )
-        #     # Calculate maintenance cost
-        #     maintenance = sum(
-        #         solver.value(availability[ts][sg][dc])
-        #         * sg_map[sg].average_maintenance_fee
-        #         for sg in availability[ts]
-        #         for dc in availability[ts][sg]
-        #     )
-        #     # Calculate energy cost
-        #     energy = sum(
-        #         solver.value(availability[ts][sg][dc])
-        #         * sg_map[sg].energy_consumption
-        #         * dc_map[dc].cost_of_energy
-        #         for sg in availability[ts]
-        #         for dc in availability[ts][sg]
-        #     )
-        #     # Buying costs
-        #     buying = sum(
-        #         solver.value(action_model[ts][dc][sg]) * sg_map[sg].purchase_price
-        #         for dc in action_model[ts]
-        #         for sg in action_model[ts][dc]
-        #     )
-        #
-        #     print(f"{ts} -R:{revenue/100} C:{(maintenance+energy+buying)/100}")
-        #     total_profit += (revenue / 100) - ((maintenance + energy + buying) / 100)
-        # print(total_profit, solver.value(total_revenue), solver.value(total_cost))
         print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)
 
         return solution
