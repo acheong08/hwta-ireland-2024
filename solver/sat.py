@@ -228,13 +228,28 @@ def solve(
 
         for sg in revenues[ts]:
             for sen in revenues[ts][sg]:
-                total_availability = sum(
-                    (
-                        availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
-                        if dc.latency_sensitivity == sen
-                        else 0
+                total_availability = cp.new_int_var(
+                    0, int(INFINITY / 2), f"total_avail_{ts}_{sen}_{sg}"
+                )
+
+                _ = cp.add(
+                    total_availability
+                    == sum(
+                        (
+                            availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
+                            if dc.latency_sensitivity == sen
+                            else 0
+                        )
+                        for dc in datacenters
                     )
-                    for dc in datacenters
+                )
+                adjusted_availability = cp.new_int_var(
+                    0, INFINITY, f"adjusted{ts}_{sg}_{sen}"
+                )
+                _ = cp.add_division_equality(
+                    adjusted_availability,
+                    total_availability * int(0.927425 * 1000000),
+                    1000000,
                 )
                 demand = demand_map[ts].get(sg, {sen: 0})[sen]
                 # Get amount of demand that can be satisfied
@@ -243,7 +258,7 @@ def solve(
                     m,
                     [
                         demand,
-                        total_availability,
+                        adjusted_availability,
                     ],  # Each server has *capacity* number of cpu/gpu that satisfies demand
                 )
                 _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
