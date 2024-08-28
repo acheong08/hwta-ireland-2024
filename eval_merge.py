@@ -40,6 +40,12 @@ for f in solutions:
     score2 = evaluation_function(
         solution2, demand, datacenters, servers, selling_prices, seed=seed
     )
+    if score is None:
+        print(f"{f} failed. Check logs")
+    if score2 is None:
+        print(f"{sys.argv[2]} failed.")
+    if score is None or score2 is None:
+        break
 
     print(f"{score} vs {score2}")
     if score > score2:
