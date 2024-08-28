@@ -19,7 +19,7 @@ solutions = [
 for f in solutions:
     if not f:
         continue
-    print(f"{f} - ", end="", flush=True)
+    print(f"{f} - ")
     # LOAD SOLUTION
     solution = load_solution(f)
 
@@ -34,6 +34,7 @@ for f in solutions:
         servers,
         selling_prices,
         seed=int(f.split("/")[-1].split(".")[0]),
+        verbose=True,
     )
 
     print(f"Solution score: {score}")

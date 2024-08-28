@@ -305,10 +305,12 @@ def solve(
                 for sg in action_model[ts][dc]
             )
 
-            print(
-                f"{ts} -R:{revenue/100} C:{(maintenance+energy+buying)/100} - Capacity: {capacity}"
-            )
-            total_profit += (revenue / 100) - ((maintenance + energy + buying) / 100)
+            profit = (revenue / 100) - ((maintenance + energy + buying) / 100)
+            if profit != 0:
+                print(
+                    f"{ts} -R:{revenue/100} C:{(maintenance+energy+buying)/100} - Capacity: {capacity}"
+                )
+            total_profit += profit
         print(total_profit, solver.value(total_revenue), solver.value(total_cost))
         print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)
 

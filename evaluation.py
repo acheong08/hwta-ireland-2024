@@ -206,7 +206,6 @@ def get_capacity_by_server_generation_latency_sensitivity(fleet):
     Z = Z[cols]
     Z = Z.map(adjust_capacity_by_failure_rate, na_action="ignore")
     Z = Z.fillna(0, inplace=False)
-    print(Z.sum().sum())
     return Z
 
 
@@ -263,7 +262,7 @@ def get_profit(D, Z, selling_prices, fleet):
     # CALCULATE OBJECTIVE P = PROFIT
     R = get_revenue(D, Z, selling_prices)
     C = get_cost(fleet)
-    return R - C
+    return R - C, R, C
 
 
 def get_revenue(D, Z, selling_prices):
@@ -380,8 +379,10 @@ def get_evaluation(
     OBJECTIVE = 0
     FLEET = pd.DataFrame()
     # if ts-related fleet is empty then current fleet is ts-fleet
+    total_profit = 0
+    total_cost = 0
+    cost_divider = 0
     for ts in range(1, time_steps + 1):
-        print(f"{ts} - ", end="")
 
         # GET THE ACTUAL DEMAND AT TIMESTEP ts
         D = get_time_step_demand(demand, ts)
@@ -410,9 +411,13 @@ def get_evaluation(
 
             L = get_normalized_lifespan(FLEET)
 
-            P = get_profit(D, Zf, selling_prices, FLEET)
+            P, R, C = get_profit(D, Zf, selling_prices, FLEET)
             o = U * L * P
             OBJECTIVE += o
+
+            total_profit += P
+            total_cost += C
+            cost_divider += 1
 
             # PUT ENTIRE FLEET on HOLD ACTION
             FLEET = put_fleet_on_hold(FLEET)
@@ -425,6 +430,8 @@ def get_evaluation(
                 "L": round(L, 2),
                 "P": round(P, 2),
             }
+            if verbose:
+                print(f"{ts} - R:{R} C:{C}")
         else:
             # PREPARE OUTPUT
             output = {
@@ -435,8 +442,9 @@ def get_evaluation(
                 "P": np.nan,
             }
 
-        if verbose:
-            print(output)
+    if verbose:
+        print(f"Total profit: {total_profit}")
+        print(f"Average cost: {total_cost/cost_divider}")
 
     return OBJECTIVE
 
