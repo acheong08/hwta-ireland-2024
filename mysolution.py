@@ -1,18 +1,18 @@
 # pyright: reportAssignmentType=false, reportUnknownMemberType=false
 
 
-# import json
-
 import numpy as np
 import pandas as pd
 
 from constants import get_datacenters, get_selling_prices, get_servers
 from evaluation import get_actual_demand  # type: ignore[import]
 from generate import generate
+from reverse import get_solution
 from seeds import known_seeds
 from solver.models import Demand
 from solver.sat import solve
-from utils import save_solution  # type: ignore[import]
+
+# from utils import save_solution  #. type: ignore[import]
 
 seeds: list[int] = known_seeds("training")
 
@@ -27,11 +27,14 @@ for seed in seeds:
             Demand(row.time_step, row.server_generation, row.high, row.medium, row.low).setup()  # type: ignore[reportUnknownArgumentType]
         )
     servers = get_servers()
-    solution = solve(parsed_demand, get_datacenters(), get_selling_prices(), servers)
+    solution = solve(
+        get_solution(), parsed_demand, get_datacenters(), get_selling_prices(), servers
+    )
     # Save the solution for reuse
     # json.dump(
     #     [sol.to_dict() for sol in solution], open(f"./output/{seed}_solution.json", "w")
     # )
     generated = generate(solution, servers)
 
-    save_solution(generated, f"./output/{seed}.json")
+    # save_solution(generated, f"./output/{seed}.json")
+    break

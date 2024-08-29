@@ -45,6 +45,7 @@ def total_maintenance_cost(
 
 
 def solve(
+    actions: list[SolutionEntry],
     demands: list[Demand],
     datacenters: list[Datacenter],
     selling_prices: list[SellingPrices],
@@ -103,6 +104,26 @@ def solve(
         }
         for timestep in range(1, MAX_TS + 1)
     }
+    for action in actions:
+        _ = cp.add(
+            action_model[action.timestep][action.datacenter_id][
+                action.server_generation
+            ]
+            == action.amount
+        )
+        print(
+            demand_map[action.timestep][action.server_generation][
+                dc_map[action.datacenter_id].latency_sensitivity
+            ]
+        )
+        for ts, dc, sg in zip(action_model, datacenters, ServerGeneration):
+            if (
+                ts == action.timestep
+                and dc.datacenter_id == action.datacenter_id
+                and sg == action.server_generation
+            ):
+                continue
+            _ = cp.add(action_model[ts][dc.datacenter_id][sg] == 0)
 
     # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, INFINITY, "cost")
@@ -265,29 +286,36 @@ def solve(
     }
     for ts in utilizations_ts:
         # Get total demand for this timestamp
-        demand_ts: int = sum(
+        demand_ts = sum(
             demand_map[ts].get(sg, {sen: 0})[sen]
-            for sg in ServerGeneration
-            for sen in Sensitivity
+            for sg, sen in zip(ServerGeneration, Sensitivity)
         )
         # Get total availability for this timestamp
-        availability_ts = cp.new_int_var(1, INFINITY, f"{ts}_avail")
-        avail_sum = sum(
-            availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
-            for sg in ServerGeneration
-            for dc in datacenters
-        )
 
         if demand_ts == 0:
-            _ = cp.add(utilizations_ts[ts] == 100)
+            _ = cp.add(utilizations_ts[ts] == 0)
         else:
-            _ = cp.add(availability_ts == avail_sum)
+            availability_ts = cp.new_int_var(0, INFINITY, f"{ts}_avail")
+            total_availability = sum(
+                (availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity)
+                for dc in datacenters
+                for sg in ServerGeneration
+            )
+            _ = cp.add(availability_ts == total_availability)
+
+            availability_is_zero = cp.new_bool_var(f"zero_avail{ts}")
+            fake_avail = cp.new_int_var(1, INFINITY, f"{ts}_fake")
+            _ = cp.add(fake_avail == availability_ts).only_enforce_if(
+                availability_is_zero.Not()
+            )
+            _ = cp.add(availability_ts == 0).only_enforce_if(availability_is_zero)
+            _ = cp.add(availability_ts != 0).only_enforce_if(availability_is_zero.Not())
 
             m = cp.new_int_var(0, INFINITY, f"{ts}_min")
-            _ = cp.add_min_equality(m, [demand_ts, availability_ts])
-            _ = cp.add_division_equality(utilizations_ts[ts], m * 100, availability_ts)
+            _ = cp.add_min_equality(m, [demand_ts, fake_avail])
+            _ = cp.add(m == fake_avail == 1).only_enforce_if(availability_is_zero)
+            _ = cp.add_division_equality(utilizations_ts[ts], m * 100, fake_avail)
     # cp.maximize(total_revenue - total_cost)
-    _ = cp.add(total_revenue - total_cost == 262370537278)
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 5 * 60
@@ -302,7 +330,20 @@ def solve(
         for ts in action_model:
             if ts == 0:
                 continue
-            print(ts, solver.value(utilizations_ts[ts]))
+            print(
+                ts,
+                solver.value(utilizations_ts[ts]),
+                solver.value(
+                    sum(
+                        availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
+                        for sg, dc in zip(ServerGeneration, datacenters)
+                    )
+                ),
+                sum(
+                    demand_map[ts].get(sg, {sen: 0})[sen]
+                    for sg, sen in zip(ServerGeneration, Sensitivity)
+                ),
+            )
             for dc in action_model[ts]:
                 for sg in action_model[ts][dc]:
                     val = solver.value(action_model[ts][dc][sg])
