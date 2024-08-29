@@ -68,6 +68,7 @@ class Server:
         self.server_type = ServerType(self.server_type)
         self.release_time = json.loads(self.release_time)  # type: ignore[reportArgumentType]
         self.purchase_price = int(self.purchase_price * 100)
+        self.cost_of_moving = int(self.cost_of_moving * 100)
         return self
 
 
@@ -94,8 +95,8 @@ class Demand:
 
 class Action(Enum):
     BUY = "buy"
-    # DISMISS = "dismiss"
-    # MOVE = "move"
+    DISMISS = "dismiss"
+    MOVE = "move"
 
 
 @dataclass
@@ -105,6 +106,7 @@ class SolutionEntry:
     server_generation: ServerGeneration
     action: Action
     amount: int
+    datacenter_target: str = ""
 
     def to_dict(self):
         return {
