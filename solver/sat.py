@@ -300,7 +300,11 @@ def solve(
                         val = solver.value(action_model[ts][dc][sg][action])
                         if val > 0:
                             solution.append(SolutionEntry(ts, dc, sg, action, val))
-        print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)
+        print(
+            solver.value(total_revenue) / 100 - solver.value(total_cost) / 100,
+            solver.value(total_revenue) / 100,
+            solver.value(total_cost) / 100,
+        )
 
         return solution
     else:
