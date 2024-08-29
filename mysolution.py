@@ -11,7 +11,7 @@ from evaluation import get_actual_demand  # type: ignore[import]
 from generate import generate
 from seeds import known_seeds
 from solver.models import Demand
-from solver.sat import solve
+from solver.solver import solve
 from utils import save_solution  # type: ignore[import]
 
 seeds: list[int] = known_seeds("training")
