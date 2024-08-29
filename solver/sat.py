@@ -278,7 +278,7 @@ def solve(
             _ = cp.add(
                 availability_ts
                 == sum(
-                    availability[ts][sg][dc.datacenter_id]
+                    availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
                     for dc, sg in zip(datacenters, ServerGeneration)
                 )
             )
@@ -286,7 +286,10 @@ def solve(
             _ = cp.add(availability_ts == 0).OnlyEnforceIf(availability_is_zero)
             _ = cp.add(availability_ts != 0).OnlyEnforceIf(availability_is_zero.Not())
 
-            safe_avail = cp.new_int_var(0, INFINITY, f"{ts}_safe_avail")
+            safe_avail = cp.new_int_var(1, INFINITY, f"{ts}_safe_avail")
+            _ = cp.add(safe_avail == availability_ts).only_enforce_if(
+                availability_is_zero.Not()
+            )
 
             m = cp.new_int_var(0, INFINITY, f"{ts}_min")
             _ = cp.add(safe_avail == m == 1).only_enforce_if(availability_is_zero)
