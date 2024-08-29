@@ -281,9 +281,9 @@ def solve(
         _ = cp.add_division_equality(utilizations_ts[ts], m * 100, availability_ts)
     # cp.maximize(total_revenue - total_cost)
     _ = cp.add(total_revenue - total_cost == 262370537278)
+    cp.maximize(sum(utilizations_ts[ts] for ts in utilizations_ts))
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 5 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (
