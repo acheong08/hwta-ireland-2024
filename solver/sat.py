@@ -205,8 +205,6 @@ def solve(
                 < dc_map[dc.datacenter_id].slots_capacity
             )
 
-    # Calculate server utilization
-    # This is the ratio of demand to availability for server type (sensitivity + server generation)
     revenues = {
         ts: {
             sg: {
@@ -265,41 +263,22 @@ def solve(
     }
     for ts in utilizations_ts:
         # Get total demand for this timestamp
-        demand_ts: int = sum(
+        demand_ts = sum(
             demand_map[ts].get(sg, {sen: 0})[sen]
-            for sg in ServerGeneration
-            for sen in Sensitivity
+            for sg, sen in zip(ServerGeneration, Sensitivity)
+        )
+        availability_ts = cp.new_int_var(1, INFINITY, f"{ts}_avail_total")
+        _ = cp.add(
+            availability_ts
+            == sum(
+                availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
+                for sg, dc in zip(ServerGeneration, datacenters)
+            )
         )
 
-        if demand_ts == 0:
-            _ = cp.add(utilizations_ts[ts] == 0)
-        else:
-            availability_ts = cp.new_int_var(1, INFINITY, f"{ts}_avail")
-            _ = cp.add(
-                availability_ts
-                == sum(
-                    availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
-                    for dc, sg in zip(datacenters, ServerGeneration)
-                )
-            )
-            availability_is_zero = cp.new_bool_var(f"{ts}_avail_zero")
-            _ = cp.add(availability_ts == 0).OnlyEnforceIf(availability_is_zero)
-            _ = cp.add(availability_ts != 0).OnlyEnforceIf(availability_is_zero.Not())
-
-            safe_avail = cp.new_int_var(1, INFINITY, f"{ts}_safe_avail")
-            _ = cp.add(safe_avail == availability_ts).only_enforce_if(
-                availability_is_zero.Not()
-            )
-
-            m = cp.new_int_var(0, INFINITY, f"{ts}_min")
-            _ = cp.add(safe_avail == m == 1).only_enforce_if(availability_is_zero)
-            _ = cp.add_min_equality(m, [demand_ts, availability_ts])
-            _ = cp.add_division_equality(
-                utilizations_ts[ts],
-                m * 100,
-                safe_avail,
-            )
-
+        m = cp.new_int_var(0, INFINITY, f"{ts}_min_da")
+        _ = cp.add_min_equality(m, [demand_ts, availability_ts])
+        _ = cp.add_division_equality(utilizations_ts[ts], m * 100, availability_ts)
     # cp.maximize(total_revenue - total_cost)
     _ = cp.add(total_revenue - total_cost == 262370537278)
 
@@ -316,7 +295,22 @@ def solve(
         for ts in action_model:
             if ts == 0:
                 continue
-            print(ts, solver.value(utilizations_ts[ts]))
+            le_availability = sum(
+                solver.value(availability[ts][sg][dc.datacenter_id])
+                * sg_map[sg].capacity
+                for sg, dc in zip(ServerGeneration, datacenters)
+            )
+            le_demand = sum(
+                demand_map[ts].get(sg, {sen: 0})[sen]
+                for sg, sen in zip(ServerGeneration, Sensitivity)
+            )
+            print(
+                ts,
+                solver.value(utilizations_ts[ts]),
+                le_availability,
+                le_demand,
+                min(le_availability, le_demand) / le_availability,
+            )
             for dc in action_model[ts]:
                 for sg in action_model[ts][dc]:
                     val = solver.value(action_model[ts][dc][sg])
