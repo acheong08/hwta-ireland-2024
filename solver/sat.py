@@ -96,8 +96,9 @@ def solve(
                                 sg_map[server_generation].release_time[0] <= timestep
                                 and sg_map[server_generation].release_time[1]
                                 >= timestep
+                                and act == Action.BUY
                             )
-                            or (timestep == 0 and act == Action.DISMISS)
+                            or (timestep == 0 and act != Action.BUY)
                             else 0
                         ),
                         f"{timestep}_{datacenter}_{server_generation}_action",
@@ -152,13 +153,12 @@ def solve(
                         ),
                         f"{timestep}_{dc1.datacenter_id}_{server_generation}_{dc2.datacenter_id}_move",
                     )
-                    for dc2 in datacenters
                 }
-                for server_generation in ServerGeneration
             }
-            for dc1 in datacenters
         }
-        for timestep in range(1, MAX_TS + 1)
+        for timestep, dc1, server_generation, dc2 in zip(
+            range(1, MAX_TS + 1), datacenters, ServerGeneration, datacenters
+        )
     }
 
     cost_of_moving = sum(
