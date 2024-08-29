@@ -256,7 +256,38 @@ def solve(
         for sg in revenues[ts]
         for sen in revenues[ts][sg]
     )
-    cp.maximize(total_revenue - total_cost)
+    # Server utilization ratio of sum(min(demand, availability) / availability)/(len(servers) * len(Sensitivity))
+    # To calculate this, we get the ratio of demand to availability at each timestamp
+    # then we sum them up and divide by the number of timestamps
+    utilizations_ts = {
+        ts: cp.new_int_var(0, 100, f"{ts}_util")
+        for ts in range(1, max(demand.time_step for demand in demands) + 1)
+    }
+    for ts in utilizations_ts:
+        # Get total demand for this timestamp
+        demand_ts: int = sum(
+            demand_map[ts].get(sg, {sen: 0})[sen]
+            for sg in ServerGeneration
+            for sen in Sensitivity
+        )
+        # Get total availability for this timestamp
+        availability_ts = cp.new_int_var(1, INFINITY, f"{ts}_avail")
+        avail_sum = sum(
+            availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity
+            for sg in ServerGeneration
+            for dc in datacenters
+        )
+
+        if demand_ts == 0:
+            _ = cp.add(utilizations_ts[ts] == 100)
+        else:
+            _ = cp.add(availability_ts == avail_sum)
+
+            m = cp.new_int_var(0, INFINITY, f"{ts}_min")
+            _ = cp.add_min_equality(m, [demand_ts, availability_ts])
+            _ = cp.add_division_equality(utilizations_ts[ts], m * 100, availability_ts)
+    # cp.maximize(total_revenue - total_cost)
+    _ = cp.add(total_revenue - total_cost == 262370537278)
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 5 * 60
@@ -271,13 +302,13 @@ def solve(
         for ts in action_model:
             if ts == 0:
                 continue
+            print(ts, solver.value(utilizations_ts[ts]))
             for dc in action_model[ts]:
                 for sg in action_model[ts][dc]:
                     val = solver.value(action_model[ts][dc][sg])
                     if val > 0:
-                        # print(f"{ts} {dc} {sg} {action} {val}")
                         solution.append(SolutionEntry(ts, dc, sg, Action.BUY, val))
-        print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)
+        print(solver.value(total_revenue) - solver.value(total_cost))
 
         return solution
     else:

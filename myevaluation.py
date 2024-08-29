@@ -39,6 +39,7 @@ for f in solutions:
         servers,
         selling_prices,
         seed=int(f.split("/")[-1].split(".")[0]),
+        verbose=True,
     )
 
     print(f"{score}")
