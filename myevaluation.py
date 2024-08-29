@@ -11,7 +11,8 @@ thedir = sys.argv[1] if len(sys.argv) == 2 else "output"
 solutions = [
     (f"./{thedir}/{f}" if f.endswith(".json") else None) for f in os.listdir(thedir)
 ]
-solutions.reverse()
+solutions.sort()  # pyright: ignore[reportCallIssue]
+
 
 total_score = 0
 for f in solutions:
