@@ -84,38 +84,90 @@ def solve(
     action_model = {
         timestep: {
             datacenter.datacenter_id: {
-                server_generation: cp.new_int_var(
-                    0,
-                    (
+                server_generation: {
+                    act: cp.new_int_var(
+                        0,
                         (
-                            dc_map[datacenter.datacenter_id].slots_capacity
-                            // sg_map[server_generation].slots_size
-                        )
-                        if sg_map[server_generation].release_time[0] <= timestep
-                        and sg_map[server_generation].release_time[1] >= timestep
-                        else 0
-                    ),
-                    f"{timestep}_{datacenter}_{server_generation}_action",
-                )
+                            (
+                                dc_map[datacenter.datacenter_id].slots_capacity
+                                // sg_map[server_generation].slots_size
+                            )
+                            if (
+                                sg_map[server_generation].release_time[0] <= timestep
+                                and sg_map[server_generation].release_time[1]
+                                >= timestep
+                            )
+                            or (timestep == 0 and act == Action.DISMISS)
+                            else 0
+                        ),
+                        f"{timestep}_{datacenter}_{server_generation}_action",
+                    )
+                    for act in Action
+                }
                 for server_generation in ServerGeneration
             }
             for datacenter in datacenters
         }
         for timestep in range(1, MAX_TS + 1)
     }
+    # Only 1 action type per server per timestep
+    for ts in action_model:
+        for dc in action_model[ts]:
+            has_buy = cp.new_bool_var(f"{ts}_{dc}_has_buy")
+            has_dismiss = cp.new_bool_var(f"{ts}_{dc}_has_sell")
+            _ = cp.add(
+                sum(action_model[ts][dc][sg][Action.BUY] for sg in ServerGeneration)
+                != 0
+            ).OnlyEnforceIf(has_buy)
+            _ = cp.add(
+                sum(action_model[ts][dc][sg][Action.DISMISS] for sg in ServerGeneration)
+                != 0
+            ).OnlyEnforceIf(has_dismiss)
+            _ = cp.add(has_buy + has_dismiss <= 1)
 
     # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, INFINITY, "cost")
     _ = cp.add(
         buying_cost
         == sum(
-            action_model[t][d][s] * sg_map[s].purchase_price
+            action_model[t][d][s][Action.BUY] * sg_map[s].purchase_price
             for t in action_model
             for d in action_model[t]
             for s in action_model[t][d]
         )
     )
+    mooooves = {
+        timestep: {
+            dc1.datacenter_id: {
+                server_generation: {
+                    dc2.datacenter_id: cp.new_int_var(
+                        0,
+                        (
+                            (
+                                dc_map[dc1.datacenter_id].slots_capacity
+                                // sg_map[server_generation].slots_size
+                            )
+                            if timestep != 0
+                            else 0
+                        ),
+                        f"{timestep}_{dc1.datacenter_id}_{server_generation}_{dc2.datacenter_id}_move",
+                    )
+                    for dc2 in datacenters
+                }
+                for server_generation in ServerGeneration
+            }
+            for dc1 in datacenters
+        }
+        for timestep in range(1, MAX_TS + 1)
+    }
 
+    cost_of_moving = sum(
+        mooooves[t][d][s][d2] * sg_map[s].cost_of_moving
+        for t in mooooves
+        for d in mooooves[t]
+        for s in mooooves[t][d]
+        for d2 in mooooves[t][d][s]
+    )
     # Now we need to calculate the total availability of each type of server at each timestep
     # based on the sum of purchase amounts minus the sum of sell amounts
     # Customers don't really care about cost of energy and stuff like that. We can deal with that later
@@ -153,14 +205,26 @@ def solve(
                 _ = cp.add(
                     # Calculate current sum
                     availability[ts][server_generation][dc]
-                    == (action_model[ts][dc][server_generation])
+                    == action_model[ts][dc][server_generation][Action.BUY]
                     # Take the previous timestep
                     + availability[ts - 1][server_generation][dc]
+                    # Add any servers moved to this datacenter
+                    + sum(
+                        mooooves[ts][dc2][server_generation][dc]
+                        for dc2 in mooooves[ts][dc][server_generation]
+                    )
+                    # Subtract any servers moved away from this datacenter
+                    - sum(
+                        mooooves[ts][dc][server_generation][dc2]
+                        for dc2 in mooooves[ts][dc][server_generation]
+                    )
+                    # Subtract dismissed servers
+                    - action_model[ts][dc][server_generation][Action.DISMISS]
                     # Subtract the expired servers based on life expectancy
                     - (
                         action_model[ts - sg_map[server_generation].life_expectancy][
                             dc
-                        ][server_generation]
+                        ][server_generation][Action.BUY]
                         if (ts - sg_map[server_generation].life_expectancy) > 0
                         else 0
                     )
@@ -185,7 +249,7 @@ def solve(
     _ = cp.add(
         maintenance_cost
         == sum(
-            action_model[ts][dc][sg] * total_maint_map[ts][sg]
+            action_model[ts][dc][sg][Action.BUY] * total_maint_map[ts][sg]
             for ts in action_model
             for dc in action_model[ts]
             for sg in action_model[ts][dc]
@@ -249,7 +313,9 @@ def solve(
                 _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
 
     total_cost = cp.new_int_var(0, INFINITY, "total_cost")
-    _ = cp.add(total_cost == buying_cost + energy_cost + maintenance_cost)
+    _ = cp.add(
+        total_cost == buying_cost + energy_cost + maintenance_cost + cost_of_moving
+    )
     total_revenue = sum(
         revenues[ts][sg][sen]
         for ts in revenues
@@ -273,43 +339,17 @@ def solve(
                 continue
             for dc in action_model[ts]:
                 for sg in action_model[ts][dc]:
-                    val = solver.value(action_model[ts][dc][sg])
-                    if val > 0:
-                        # print(f"{ts} {dc} {sg} {action} {val}")
-                        solution.append(SolutionEntry(ts, dc, sg, Action.BUY, val))
-        # total_profit = 0
-        # for ts in action_model:
-        #     # Calculate revenue
-        #     revenue = sum(
-        #         solver.value(revenues[ts][sg][sen])
-        #         for sg in revenues[ts]
-        #         for sen in revenues[ts][sg]
-        #     )
-        #     # Calculate maintenance cost
-        #     maintenance = sum(
-        #         solver.value(availability[ts][sg][dc])
-        #         * sg_map[sg].average_maintenance_fee
-        #         for sg in availability[ts]
-        #         for dc in availability[ts][sg]
-        #     )
-        #     # Calculate energy cost
-        #     energy = sum(
-        #         solver.value(availability[ts][sg][dc])
-        #         * sg_map[sg].energy_consumption
-        #         * dc_map[dc].cost_of_energy
-        #         for sg in availability[ts]
-        #         for dc in availability[ts][sg]
-        #     )
-        #     # Buying costs
-        #     buying = sum(
-        #         solver.value(action_model[ts][dc][sg]) * sg_map[sg].purchase_price
-        #         for dc in action_model[ts]
-        #         for sg in action_model[ts][dc]
-        #     )
-        #
-        #     print(f"{ts} -R:{revenue/100} C:{(maintenance+energy+buying)/100}")
-        #     total_profit += (revenue / 100) - ((maintenance + energy + buying) / 100)
-        # print(total_profit, solver.value(total_revenue), solver.value(total_cost))
+                    for action in Action:
+                        val = solver.value(action_model[ts][dc][sg][action])
+                        if val > 0:
+                            solution.append(SolutionEntry(ts, dc, sg, action, val))
+                    # Get move amounts
+                    for dc2 in mooooves[ts][dc][sg]:
+                        val = solver.value(mooooves[ts][dc][sg][dc2])
+                        if val > 0:
+                            solution.append(
+                                SolutionEntry(ts, dc, sg, Action.MOVE, val, dc2)
+                            )
         print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)
 
         return solution

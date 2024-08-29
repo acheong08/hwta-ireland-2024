@@ -54,6 +54,34 @@ def generate(
                         "action": "dismiss",
                     }
                 )
+        elif entry.action == Action.MOVE:
+            if ids.get(entry.datacenter_target) is None:
+                ids[entry.datacenter_target] = {entry.server_generation: []}
+            if ids[entry.datacenter_target].get(entry.server_generation) is None:
+                ids[entry.datacenter_target][entry.server_generation] = []
+
+            for _ in range(entry.amount):
+                server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
+                ids[entry.datacenter_target][entry.server_generation].append(server_id)
+                solution.append(
+                    {
+                        "time_step": entry.timestep,
+                        "datacenter_id": entry.datacenter_id,
+                        "server_id": server_id["id"],
+                        "server_generation": entry.server_generation.value,
+                        "action": "move",
+                    }
+                )
+                # Now hold it at the new datacenter
+                solution.append(
+                    {
+                        "time_step": entry.timestep + 1,
+                        "datacenter_id": entry.datacenter_target,
+                        "server_id": server_id["id"],
+                        "server_generation": entry.server_generation.value,
+                        "action": "hold",
+                    }
+                )
     return solution
 
 
