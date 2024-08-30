@@ -378,6 +378,7 @@ def get_evaluation(
     demand = get_actual_demand(demand)
     OBJECTIVE = 0
     FLEET = pd.DataFrame()
+    total_profit = 0
     # if ts-related fleet is empty then current fleet is ts-fleet
     for ts in range(1, time_steps + 1):
 
@@ -411,6 +412,7 @@ def get_evaluation(
             P = get_profit(D, Zf, selling_prices, FLEET)
             o = U * L * P
             OBJECTIVE += o
+            total_profit += P
 
             # PUT ENTIRE FLEET on HOLD ACTION
             FLEET = put_fleet_on_hold(FLEET)
@@ -435,6 +437,7 @@ def get_evaluation(
 
         if verbose:
             print(output)
+    print("Total profit:", total_profit)
 
     return OBJECTIVE
 
