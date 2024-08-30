@@ -2,9 +2,11 @@
 
 
 import math
+from itertools import product
 
 from ortools.sat.python import cp_model
 
+from .debuggy import debug_on  # type: ignore[import]
 from .models import (
     Action,
     Datacenter,
@@ -44,6 +46,7 @@ def total_maintenance_cost(
     return int(total_cost)
 
 
+@debug_on(KeyError)
 def solve(
     demands: list[Demand],
     datacenters: list[Datacenter],
@@ -146,7 +149,7 @@ def solve(
                             0,
                             (
                                 (
-                                    dc_map[dc1.datacenter_id].slots_capacity
+                                    dc_map[dc2.datacenter_id].slots_capacity
                                     // sg_map[server_generation].slots_size
                                 )
                                 if timestep != 0
@@ -164,26 +167,27 @@ def solve(
                             timestep,
                         )
                     }
+                    for dc2 in datacenters
                 }
+                for server_generation in ServerGeneration
             }
+            for dc1 in datacenters
         }
-        for timestep, dc1, server_generation, dc2 in zip(
-            range(1, MAX_TS + 1), datacenters, ServerGeneration, datacenters
-        )
+        for timestep in range(1, MAX_TS + 1)
     }
 
-    for ts, dc1, sg, dc2, ts2 in zip(
+    for ts, dc1, sg, dc2 in product(
         range(1, MAX_TS + 1),
         datacenters,
         ServerGeneration,
         datacenters,
-        range(1, MAX_TS + 1),
     ):
-        # Make sure we move less than we have
-        _ = cp.add(
-            action_model[ts2][dc1.datacenter_id][sg][Action.BUY]
-            >= mooooves[ts][dc1.datacenter_id][sg][dc2.datacenter_id][ts2]
-        )
+        for ts2 in mooooves[ts][dc1.datacenter_id][sg][dc2.datacenter_id]:
+            # Make sure we move less than we have
+            _ = cp.add(
+                action_model[ts2][dc1.datacenter_id][sg][Action.BUY]
+                >= mooooves[ts][dc1.datacenter_id][sg][dc2.datacenter_id][ts2]
+            )
 
     cost_of_moving = sum(
         mooooves[t][d][s][d2][ts2] * sg_map[s].cost_of_moving
@@ -225,6 +229,40 @@ def solve(
 
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
+                expired_but_moved = (
+                    sum(
+                        (
+                            mooooves[ts2][dc][server_generation][dc2][
+                                ts - sg_map[server_generation].life_expectancy
+                            ]
+                            if ts - sg_map[server_generation].life_expectancy > 0
+                            else 0
+                        )
+                        for dc2 in mooooves[
+                            ts - sg_map[server_generation].life_expectancy
+                        ][dc][server_generation]
+                        for ts2 in range(
+                            ts - sg_map[server_generation].life_expectancy, ts
+                        )
+                    )
+                    if ts - sg_map[server_generation].life_expectancy > 0
+                    else 0
+                )
+                moved_but_expired = (
+                    sum(
+                        mooooves[ts2][dc2][server_generation][dc][
+                            ts - sg_map[server_generation].life_expectancy
+                        ]
+                        for dc2 in mooooves[
+                            ts - sg_map[server_generation].life_expectancy
+                        ][dc][server_generation]
+                        for ts2 in range(
+                            ts - sg_map[server_generation].life_expectancy, ts
+                        )
+                    )
+                    if ts - sg_map[server_generation].life_expectancy > 0
+                    else 0
+                )
                 # Logic: we sum buy/sells for datacenters that match the sensitivity and subtract the sells
                 # We do this for all timesteps in the past
                 _ = cp.add(
@@ -235,9 +273,11 @@ def solve(
                     + availability[ts - 1][server_generation][dc]
                     # Add any servers moved to this datacenter
                     + sum(
-                        mooooves[ts][dc2][server_generation][dc][ts2]
-                        for dc2 in mooooves[ts][dc][server_generation]
-                        for ts2 in mooooves[ts][dc2][server_generation][dc]
+                        mooooves[ts][dc2.datacenter_id][server_generation][dc][ts2]
+                        for dc2 in datacenters
+                        for ts2 in mooooves[ts][dc2.datacenter_id][server_generation][
+                            dc
+                        ]
                     )
                     # Subtract any servers moved away from this datacenter
                     - sum(
@@ -256,29 +296,9 @@ def solve(
                         else 0
                     )
                     # Add back servers that expired but were moved
-                    + sum(
-                        mooooves[ts2][dc][server_generation][dc2][
-                            ts - sg_map[server_generation].life_expectancy
-                        ]
-                        for dc2 in mooooves[
-                            ts - sg_map[server_generation].life_expectancy
-                        ][dc][server_generation]
-                        for ts2 in range(
-                            ts - sg_map[server_generation].life_expectancy, ts
-                        )
-                    )
+                    + expired_but_moved
                     # Remove servers that were moved in and expired
-                    - sum(
-                        mooooves[ts2][dc2][server_generation][dc][
-                            ts - sg_map[server_generation].life_expectancy
-                        ]
-                        for dc2 in mooooves[
-                            ts - sg_map[server_generation].life_expectancy
-                        ][dc][server_generation]
-                        for ts2 in range(
-                            ts - sg_map[server_generation].life_expectancy, ts
-                        )
-                    )
+                    - moved_but_expired
                 )
 
     energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
