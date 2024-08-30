@@ -232,9 +232,9 @@ def solve(
                 expired_but_moved = (
                     sum(
                         (
-                            mooooves[ts2][dc][server_generation][dc2][
-                                ts - sg_map[server_generation].life_expectancy
-                            ]
+                            mooooves[ts2][dc][server_generation][dc2].get(
+                                ts - sg_map[server_generation].life_expectancy, 0
+                            )
                             if ts - sg_map[server_generation].life_expectancy > 0
                             else 0
                         )
@@ -250,9 +250,9 @@ def solve(
                 )
                 moved_but_expired = (
                     sum(
-                        mooooves[ts2][dc2][server_generation][dc][
-                            ts - sg_map[server_generation].life_expectancy
-                        ]
+                        mooooves[ts2][dc2][server_generation][dc].get(
+                            ts - sg_map[server_generation].life_expectancy, 0
+                        )
                         for dc2 in mooooves[
                             ts - sg_map[server_generation].life_expectancy
                         ][dc][server_generation]
