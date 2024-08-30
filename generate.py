@@ -24,6 +24,7 @@ def generate(
                         "expires_at": entry.timestep
                         + server_map[entry.server_generation].life_expectancy
                         - 1,
+                        "bought_at": entry.timestep,
                     }
                 )
                 solution.append(
@@ -61,7 +62,17 @@ def generate(
                 ids[entry.datacenter_target][entry.server_generation] = []
 
             for _ in range(entry.amount):
-                server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
+                # Look for server_id that matches the source timestamp
+                server_id = next(
+                    (
+                        server
+                        for server in ids[entry.datacenter_id][entry.server_generation]
+                        if server["bought_at"] == entry.move_source_ts
+                    ),
+                    None,
+                )
+                if server_id is None:
+                    raise ValueError("Server not found")
                 ids[entry.datacenter_target][entry.server_generation].append(server_id)
                 solution.append(
                     {

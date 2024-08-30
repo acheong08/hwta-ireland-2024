@@ -141,18 +141,29 @@ def solve(
         timestep: {
             dc1.datacenter_id: {
                 server_generation: {
-                    dc2.datacenter_id: cp.new_int_var(
-                        0,
-                        (
+                    dc2.datacenter_id: {
+                        ts2: cp.new_int_var(
+                            0,
                             (
-                                dc_map[dc1.datacenter_id].slots_capacity
-                                // sg_map[server_generation].slots_size
-                            )
-                            if timestep != 0
-                            else 0
-                        ),
-                        f"{timestep}_{dc1.datacenter_id}_{server_generation}_{dc2.datacenter_id}_move",
-                    )
+                                (
+                                    dc_map[dc1.datacenter_id].slots_capacity
+                                    // sg_map[server_generation].slots_size
+                                )
+                                if timestep != 0
+                                else 0
+                            ),
+                            f"{timestep}_{dc1.datacenter_id}_{server_generation}_{dc2.datacenter_id}_move",
+                        )
+                        for ts2 in range(
+                            (
+                                timestep - sg_map[server_generation].life_expectancy
+                                if timestep - sg_map[server_generation].life_expectancy
+                                > 0
+                                else 1
+                            ),
+                            timestep,
+                        )
+                    }
                 }
             }
         }
@@ -161,12 +172,26 @@ def solve(
         )
     }
 
+    for ts, dc1, sg, dc2, ts2 in zip(
+        range(1, MAX_TS + 1),
+        datacenters,
+        ServerGeneration,
+        datacenters,
+        range(1, MAX_TS + 1),
+    ):
+        # Make sure we move less than we have
+        _ = cp.add(
+            action_model[ts2][dc1.datacenter_id][sg][Action.BUY]
+            >= mooooves[ts][dc1.datacenter_id][sg][dc2.datacenter_id][ts2]
+        )
+
     cost_of_moving = sum(
-        mooooves[t][d][s][d2] * sg_map[s].cost_of_moving
+        mooooves[t][d][s][d2][ts2] * sg_map[s].cost_of_moving
         for t in mooooves
         for d in mooooves[t]
         for s in mooooves[t][d]
         for d2 in mooooves[t][d][s]
+        for ts2 in mooooves[t][d][s][d2]
     )
     # Now we need to calculate the total availability of each type of server at each timestep
     # based on the sum of purchase amounts minus the sum of sell amounts
@@ -210,13 +235,15 @@ def solve(
                     + availability[ts - 1][server_generation][dc]
                     # Add any servers moved to this datacenter
                     + sum(
-                        mooooves[ts][dc2][server_generation][dc]
+                        mooooves[ts][dc2][server_generation][dc][ts2]
                         for dc2 in mooooves[ts][dc][server_generation]
+                        for ts2 in mooooves[ts][dc2][server_generation][dc]
                     )
                     # Subtract any servers moved away from this datacenter
                     - sum(
-                        mooooves[ts][dc][server_generation][dc2]
+                        mooooves[ts][dc][server_generation][dc2][ts2]
                         for dc2 in mooooves[ts][dc][server_generation]
+                        for ts2 in mooooves[ts][dc][server_generation][dc2]
                     )
                     # Subtract dismissed servers
                     - action_model[ts][dc][server_generation][Action.DISMISS]
@@ -227,6 +254,30 @@ def solve(
                         ][server_generation][Action.BUY]
                         if (ts - sg_map[server_generation].life_expectancy) > 0
                         else 0
+                    )
+                    # Add back servers that expired but were moved
+                    + sum(
+                        mooooves[ts2][dc][server_generation][dc2][
+                            ts - sg_map[server_generation].life_expectancy
+                        ]
+                        for dc2 in mooooves[
+                            ts - sg_map[server_generation].life_expectancy
+                        ][dc][server_generation]
+                        for ts2 in range(
+                            ts - sg_map[server_generation].life_expectancy, ts
+                        )
+                    )
+                    # Remove servers that were moved in and expired
+                    - sum(
+                        mooooves[ts2][dc2][server_generation][dc][
+                            ts - sg_map[server_generation].life_expectancy
+                        ]
+                        for dc2 in mooooves[
+                            ts - sg_map[server_generation].life_expectancy
+                        ][dc][server_generation]
+                        for ts2 in range(
+                            ts - sg_map[server_generation].life_expectancy, ts
+                        )
                     )
                 )
 
@@ -345,11 +396,14 @@ def solve(
                             solution.append(SolutionEntry(ts, dc, sg, action, val))
                     # Get move amounts
                     for dc2 in mooooves[ts][dc][sg]:
-                        val = solver.value(mooooves[ts][dc][sg][dc2])
-                        if val > 0:
-                            solution.append(
-                                SolutionEntry(ts, dc, sg, Action.MOVE, val, dc2)
-                            )
+                        for ts2 in mooooves[ts][dc][sg][dc2]:
+                            val = solver.value(mooooves[ts][dc][sg][dc2][ts2])
+                            if val > 0:
+                                solution.append(
+                                    SolutionEntry(
+                                        ts, dc, sg, Action.MOVE, val, dc2, ts2
+                                    )
+                                )
         print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)
 
         return solution

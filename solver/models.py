@@ -107,6 +107,7 @@ class SolutionEntry:
     action: Action
     amount: int
     datacenter_target: str = ""
+    move_source_ts: int = -1
 
     def to_dict(self):
         return {
