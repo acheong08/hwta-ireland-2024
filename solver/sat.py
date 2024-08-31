@@ -136,7 +136,28 @@ def solve(
             for s in action_model[t][d]
         )
     )
-
+    # We need to calculate the number of servers dismissed for life expectancy reasons
+    dismissed_servers = {
+        t: {
+            sg: {
+                dc.datacenter_id: cp.new_int_var(
+                    0,
+                    (dc_map[dc.datacenter_id].slots_capacity // sg_map[sg].slots_size),
+                    f"{t}_{sg}_{dc}_dismissed",
+                )
+                for dc in datacenters
+            }
+            for sg in ServerGeneration
+        }
+        for t in action_model
+    }
+    dismissed_servers[0] = {
+        sg: {
+            dc.datacenter_id: cp.new_int_var(0, 0, f"0_{sg}_{dc}_dismissed")
+            for dc in datacenters
+        }
+        for sg in ServerGeneration
+    }
     # Now we need to calculate the total availability of each type of server at each timestep
     # based on the sum of purchase amounts minus the sum of sell amounts
     # Customers don't really care about cost of energy and stuff like that. We can deal with that later
@@ -169,6 +190,29 @@ def solve(
 
         for server_generation in availability[ts]:
             for dc in availability[ts][server_generation]:
+                # Find expired servers that were not dismissed
+                _ = cp.add(
+                    dismissed_servers[ts][server_generation][dc]
+                    == dismissed_servers[ts - 1][server_generation][dc]
+                    + action_model[ts][dc][server_generation][Action.DISMISS]
+                )
+                m = cp.new_int_var(0, INFINITY, f"{ts}_{server_generation}_{dc}_m")
+                if ts - sg_map[server_generation].life_expectancy >= 1:
+                    _ = cp.add_max_equality(
+                        m,
+                        [
+                            0,
+                            action_model[
+                                ts - sg_map[server_generation].life_expectancy
+                            ][dc][server_generation][Action.BUY]
+                            - dismissed_servers[ts - 1][server_generation][dc]
+                            + dismissed_servers[
+                                ts - sg_map[server_generation].life_expectancy - 1
+                            ][server_generation][dc],
+                        ],
+                    )
+                else:
+                    _ = cp.add(m == 0)
                 # Logic: we sum buy/sells for datacenters that match the sensitivity and subtract the sells
                 # We do this for all timesteps in the past
                 _ = cp.add(
@@ -180,13 +224,7 @@ def solve(
                     # Subtract dismissed servers
                     - action_model[ts][dc][server_generation][Action.DISMISS]
                     # Subtract the expired servers based on life expectancy
-                    - (
-                        action_model[ts - sg_map[server_generation].life_expectancy][
-                            dc
-                        ][server_generation][Action.BUY]
-                        if (ts - sg_map[server_generation].life_expectancy) > 0
-                        else 0
-                    )
+                    - (m if ts > sg_map[server_generation].life_expectancy else 0)
                 )
 
     energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
