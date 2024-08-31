@@ -89,7 +89,7 @@ class DQN(tf.keras.Model):
                 self.encode_server_generation(server['server_generation']),
                 self.encode_server_id(server['server_id']),
                 self.encode_action(server['action'])
-            ] for server in fleet], dtype=tf.float32)
+            ] for server in fleet], dtype=tf.float32) # Use float 32 on cpu and 16 on cuda
         
         # Process demand
         demand = tf.convert_to_tensor(state['demand'], dtype=tf.float32)
