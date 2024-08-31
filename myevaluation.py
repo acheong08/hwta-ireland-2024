@@ -8,7 +8,7 @@ from eval_utils import get_score
 thedir = sys.argv[1] if len(sys.argv) == 2 else "output"
 # List files in output directory
 solutions = [
-    (f"./{thedir}/{f}" if f.endswith(".json") else None) for f in os.listdir(thedir)
+    (f"./{thedir}/{f}" if f.endswith(".json") else "") for f in os.listdir(thedir)
 ]
 solutions.sort()  # pyright: ignore[reportCallIssue]
 
