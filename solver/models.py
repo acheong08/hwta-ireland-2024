@@ -68,6 +68,7 @@ class Server:
         self.server_type = ServerType(self.server_type)
         self.release_time = json.loads(self.release_time)  # type: ignore[reportArgumentType]
         self.purchase_price = int(self.purchase_price * 100)
+        self.average_maintenance_fee = int(self.average_maintenance_fee * 100)
         return self
 
 
