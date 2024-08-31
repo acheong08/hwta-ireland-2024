@@ -437,7 +437,6 @@ def get_evaluation(
 
         if verbose:
             print(output)
-    print("Total profit:", total_profit)
 
     return OBJECTIVE
 
