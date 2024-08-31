@@ -277,7 +277,9 @@ def solve(
                     if val > 0:
                         # print(f"{ts} {dc} {sg} {action} {val}")
                         solution.append(SolutionEntry(ts, dc, sg, Action.BUY, val))
-        print(solver.value(total_revenue) / 100 - solver.value(total_cost) / 100)
+        rev = solver.value(total_revenue) / 100
+        cos = solver.value(total_cost) / 100
+        print(rev - cos, rev, cos)
 
         return solution
     else:
