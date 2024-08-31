@@ -3,8 +3,7 @@
 import os
 import sys
 
-from evaluation import evaluation_function
-from utils import load_problem_data, load_solution
+from eval_utils import get_score
 
 if len(sys.argv) != 3:
     print("Usage: python eval_merge.py <dir1> <dir2>")
@@ -26,26 +25,10 @@ for f in solutions:
     seed = int(f.split("/")[-1].split(".")[0])
     print(f"{seed} - ", end="", flush=True)
     # ./<dir>/<seed>.json
-    # LOAD SOLUTION
-    solution = load_solution(f)
-    solution2 = load_solution(f"./{sys.argv[2]}/{seed}.json")
-
-    # LOAD PROBLEM DATA
-    demand, datacenters, servers, selling_prices = load_problem_data()
 
     # EVALUATE THE SOLUTION
-    score = evaluation_function(
-        solution, demand, datacenters, servers, selling_prices, seed=seed
-    )
-    score2 = evaluation_function(
-        solution2, demand, datacenters, servers, selling_prices, seed=seed
-    )
-    if score is None:
-        print(f"{f} failed. Check logs")
-    if score2 is None:
-        print(f"{sys.argv[2]} failed.")
-    if score is None or score2 is None:
-        break
+    score = get_score(f, seed)
+    score2 = get_score(f"./{sys.argv[2]}/{seed}.json", seed)
 
     print(f"{score} vs {score2}")
     if score > score2:
@@ -55,3 +38,6 @@ for f in solutions:
     elif score < score2:
         print(f"Better solution in {sys.argv[2]}")
         os.system(f"cp ./{sys.argv[2]}/{seed}.json ./merged")
+    else:
+        print("Same score")
+        os.system(f"cp {f} ./merged")
