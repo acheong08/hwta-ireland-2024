@@ -266,8 +266,6 @@ def solve(
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
         or status == cp_model.FEASIBLE  # type: ignore[reportUnnecessaryComparison]
     ):
-        print(solver.solution_info())
-        print(solver.response_stats())
         for ts in action_model:
             if ts == 0:
                 continue
