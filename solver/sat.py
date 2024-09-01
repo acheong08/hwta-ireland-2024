@@ -266,6 +266,8 @@ def solve(
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
         or status == cp_model.FEASIBLE  # type: ignore[reportUnnecessaryComparison]
     ):
+        print("Time:", solver.UserTime())
+        print("Status:", solver.status_name(status))
         for ts in action_model:
             if ts == 0:
                 continue
