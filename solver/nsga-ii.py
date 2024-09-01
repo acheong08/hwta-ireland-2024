@@ -108,7 +108,7 @@ def optimize_sequence(constant_vectors, weight_vectors, n_days):
     return daily_results
 
 # Test the sequence optimization
-n_days = 100
+n_days = 168
 constant_vectors = np.random.randint(2, 55846, size=(n_days, 21))
 constant_vectors = constant_vectors - constant_vectors % 2  # Ensure even numbers
 weight_vectors = np.ones((n_days, 21))  # All ones for now, but can be modified
