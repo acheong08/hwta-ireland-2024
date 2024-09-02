@@ -55,7 +55,7 @@ def solve(
 
     cp = cp_model.CpModel()
     """
-    The action model is what will be solved by SAT. It decides when to buy, sell, or move servers.
+    The action model is what will be solved by SAT. It decides when to buy, sell
     """
     action_model = {
         timestep: {
@@ -296,7 +296,7 @@ def solve(
     cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 5 * 60
+    # solver.parameters.max_time_in_seconds = 5 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (
@@ -311,7 +311,6 @@ def solve(
                     for action in Action:
                         val = solver.value(action_model[ts][dc][sg][action])
                         if val > 0:
-                            print(f"{ts} {dc} {sg} {action} {val}")
                             solution.append(SolutionEntry(ts, dc, sg, action, val))
         print(
             solver.value(total_revenue) / 100 - solver.value(total_cost) / 100,

@@ -262,7 +262,7 @@ def get_profit(D, Z, selling_prices, fleet):
     # CALCULATE OBJECTIVE P = PROFIT
     R = get_revenue(D, Z, selling_prices)
     C = get_cost(fleet)
-    return R - C, R, C
+    return R - C
 
 
 def get_revenue(D, Z, selling_prices):
@@ -379,8 +379,6 @@ def get_evaluation(
     OBJECTIVE = 0
     FLEET = pd.DataFrame()
     total_profit = 0
-    total_cost = 0
-    total_revenue = 0
     # if ts-related fleet is empty then current fleet is ts-fleet
     for ts in range(1, time_steps + 1):
 
@@ -411,13 +409,10 @@ def get_evaluation(
 
             L = get_normalized_lifespan(FLEET)
 
-            P, R, C = get_profit(D, Zf, selling_prices, FLEET)
+            P = get_profit(D, Zf, selling_prices, FLEET)
             o = U * L * P
             OBJECTIVE += o
-
             total_profit += P
-            total_cost += C
-            total_revenue += R
 
             # PUT ENTIRE FLEET on HOLD ACTION
             FLEET = put_fleet_on_hold(FLEET)
@@ -440,8 +435,8 @@ def get_evaluation(
                 "P": np.nan,
             }
 
-    if verbose:
-        print(total_profit, total_revenue, total_cost)
+        if verbose:
+            print(output)
 
     return OBJECTIVE
 
@@ -491,12 +486,17 @@ def evaluation_function(
     # SET RANDOM SEED
     np.random.seed(seed)
     # EVALUATE SOLUTION
-    return get_evaluation(
-        solution,
-        demand,
-        datacenters,
-        servers,
-        selling_prices,
-        time_steps=time_steps,
-        verbose=verbose,
-    )
+    try:
+        return get_evaluation(
+            solution,
+            demand,
+            datacenters,
+            servers,
+            selling_prices,
+            time_steps=time_steps,
+            verbose=verbose,
+        )
+    # CATCH EXCEPTIONS
+    except Exception as e:
+        logger.error(e)
+        return None
