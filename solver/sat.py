@@ -35,11 +35,11 @@ def total_maintenance_cost(
     for ts in range(
         current_timestep, min(current_timestep + life_expectancy, MAX_TS) + 1
     ):
-        lifespan = ts - current_timestep + 1
+        operating_time = ts - current_timestep + 1
         total_cost += avg_maint * (
             1
-            + (1.5 * lifespan / life_expectancy)
-            * math.log(1.5 * lifespan / life_expectancy, 2)
+            + (1.5 * operating_time / life_expectancy)
+            * math.log(1.5 * operating_time / life_expectancy, 2)
         )
     return int(total_cost)
 
