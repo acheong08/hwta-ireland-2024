@@ -1,7 +1,2 @@
 1 DC1 ServerGeneration.CPU_S1 Action.BUY 1
-1 DC2 ServerGeneration.GPU_S1 Action.BUY 1
-38 DC1 ServerGeneration.CPU_S2 Action.BUY 1
-49 DC1 ServerGeneration.GPU_S2 Action.BUY 1
-74 DC3 ServerGeneration.CPU_S3 Action.BUY 1
-99 DC3 ServerGeneration.GPU_S3 Action.BUY 1
-110 DC2 ServerGeneration.CPU_S4 Action.BUY 1
+3 DC1 ServerGeneration.CPU_S1 Action.DISMISS 1

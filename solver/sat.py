@@ -1,7 +1,6 @@
 # pyright: reportAssignmentType=false
-
-
 import math
+from itertools import product
 
 from ortools.sat.python import cp_model
 
@@ -166,6 +165,71 @@ def solve(
                     )
                 )
 
+    utilization = {
+        ts: {
+            sg: {
+                sen: (
+                    cp.new_int_var(0, 100, f"ut_{ts}{sg}{sen}")
+                    if ts >= sg_map[sg].release_time[0]
+                    and ts <= sg_map[sg].life_expectancy + sg_map[sg].release_time[1]
+                    else cp.new_int_var(100, 100, f"ut_{ts}_{sg}{sen}")
+                )
+            }
+        }
+        for ts, sg, sen in product(range(1, MAX_TS + 1), ServerGeneration, Sensitivity)
+    }
+    for ts in utilization:
+        for sg in utilization[ts]:
+            for sen in utilization[ts][sg]:
+                total_availability = sum(
+                    (
+                        (availability[ts][sg][dc.datacenter_id] * sg_map[sg].capacity)
+                        if dc.latency_sensitivity == sen
+                        else 0
+                    )
+                    for dc in datacenters
+                )
+                availability_is_zero = cp.new_bool_var(f"{ts}_{sg}_{sen}_avail_zero")
+                _ = cp.add(total_availability == 0).only_enforce_if(
+                    availability_is_zero
+                )
+                _ = cp.add(total_availability != 0).only_enforce_if(
+                    availability_is_zero.Not()
+                )
+                demand = demand_map[ts].get(sg, {sen: 0})[sen]
+                if demand == 0:
+                    _ = cp.add(utilization[ts][sg][sen] == 100)
+                    continue
+                safe_avail = cp.new_int_var(1, INFINITY, f"{ts}_{sg}_{sen}_avail")
+                _ = cp.add(safe_avail == total_availability).only_enforce_if(
+                    availability_is_zero.Not()
+                )
+                m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
+                _ = cp.add_min_equality(m, [demand, total_availability])
+                _ = cp.add(m == safe_avail == 1).only_enforce_if(availability_is_zero)
+                _ = cp.add_division_equality(utilization[ts][sg][sen], m, safe_avail)
+
+    total_utilization = cp.new_int_var(
+        0,
+        100 * len(utilization) * len(Sensitivity) * len(ServerGeneration),
+        "total_utilization",
+    )
+
+    _ = cp.add(
+        total_utilization
+        == sum(
+            utilization[ts][sg][sen]
+            for ts in utilization
+            for sg in utilization[ts]
+            for sen in utilization[ts][sg]
+        )
+    )
+    avg_utilization = cp.new_int_var(0, 100, "avg_utilization")
+    _ = cp.add_division_equality(
+        avg_utilization,
+        total_utilization,
+        len(utilization) * len(Sensitivity) * len(ServerGeneration),
+    )
     energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
     _ = cp.add(
         energy_cost
@@ -256,10 +320,14 @@ def solve(
         for sg in revenues[ts]
         for sen in revenues[ts][sg]
     )
-    cp.maximize(total_revenue - total_cost)
+    profit = cp.new_int_var(0, INFINITY, "profit")
+    _ = cp.add(profit == total_revenue - total_cost)
+    le_measure = cp.new_int_var(0, INFINITY, "le_measure")
+    _ = cp.add_multiplication_equality(le_measure, [avg_utilization, profit])
+    cp.maximize(le_measure)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 5 * 60
+    solver.parameters.max_time_in_seconds = 10 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (
