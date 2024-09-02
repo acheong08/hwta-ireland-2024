@@ -327,7 +327,6 @@ def solve(
     cp.maximize(le_measure)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 10 * 60
     status = solver.solve(cp)
     solution: list[SolutionEntry] = []
     if (
