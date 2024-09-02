@@ -46,4 +46,5 @@ while True:
 
         with open(f"output/{seed}_{count}.json", "w") as f:
             _ = f.write(s)
-        count += 1
+    count += 1
+    break
