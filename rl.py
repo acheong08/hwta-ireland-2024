@@ -11,7 +11,18 @@ from evaluation import (
     get_utilization,
     get_known
 )   
+import json
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Set memory growth to avoid allocating all GPU memory at once
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"GPUs found and enabled: {gpus}")
+    except RuntimeError as e:
+        print(e)
+        
 class ServerFleetEnvironment:
     def __init__(self, datacenters_file, demand_file, selling_prices_file, servers_file):
         self.datacenters = pd.read_csv(datacenters_file)
@@ -19,11 +30,13 @@ class ServerFleetEnvironment:
         self.selling_prices = pd.read_csv(selling_prices_file)
         self.servers = pd.read_csv(servers_file)
         
+        # Filter only GPU server types
+        self.server_types = get_known("server_generation")
+        self.server_types = [st for st in self.server_types if st.startswith('GPU')]
+        
+        self.datacenter_ids = get_known("datacenter_id")
         self.time_step = 1
         self.max_steps = self.demand['time_step'].max()
-        
-        self.server_types = get_known("server_generation")
-        self.datacenter_ids = get_known("datacenter_id")
         
         self.fleet = self.initialize_fleet()
         self.actions = []
@@ -67,27 +80,52 @@ class ServerFleetEnvironment:
     def get_time_step_fleet(self):
         return self.fleet
 
+    def get_profit(self):
+        total_revenue = 0
+        total_cost = 0
+        total_demand = sum(self._get_current_demand())
+        
+        # Calculate revenue and costs based on fleet and demand
+        for dc in self.fleet:
+            for st, servers in self.fleet[dc].items():
+                # Use the correct column name 'selling_price'
+                price = self.selling_prices.loc[self.selling_prices['server_generation'] == st, 'selling_price'].values[0]
+                utilization = min(len(servers), total_demand) / len(servers) if servers else 0
+                revenue = utilization * price
+                cost = len(servers) * price * 0.1  # Example cost factor, adjust as needed
+                
+                total_revenue += revenue
+                total_cost += cost
+        
+        profit = total_revenue - total_cost
+        
+        # Scale the profit to a reasonable range
+        return profit / 100.0
+
+
     def update_fleet(self, action):
         dc_index, st_index = divmod(action, len(self.server_types))
         datacenter = self.datacenter_ids[dc_index]
         server_type = self.server_types[st_index]
         
-        if len(self.fleet[datacenter][server_type]) < self.datacenters.loc[self.datacenters['datacenter_id'] == datacenter, 'slots_capacity'].values[0]:
-            server_id = str(uuid.uuid4())
-            self.fleet[datacenter][server_type].append(server_id)
-            self.actions.append({
-                "time_step": self.time_step,
-                "datacenter_id": datacenter,
-                "server_generation": server_type,
-                "server_id": server_id,
-                "action": "buy"
-            })
+        # Example condition to remove or replace servers based on demand or other criteria
+        if len(self.fleet[datacenter][server_type]) > self.demand[self.demand['time_step'] == self.time_step].iloc[0].get(server_type, 0):
+            # Remove a server if overcapacity
+            if self.fleet[datacenter][server_type]:
+                self.fleet[datacenter][server_type].pop(0)
+        else:
+            # Add a server if under capacity
+            if len(self.fleet[datacenter][server_type]) < self.datacenters.loc[self.datacenters['datacenter_id'] == datacenter, 'slots_capacity'].values[0]:
+                server_id = str(uuid.uuid4())
+                self.fleet[datacenter][server_type].append(server_id)
+                self.actions.append({
+                    "time_step": self.time_step,
+                    "datacenter_id": datacenter,
+                    "server_generation": server_type,
+                    "server_id": server_id,
+                    "action": "buy"
+                })
 
-    def get_profit(self):
-        total_capacity = sum(len(servers) for dc in self.fleet.values() for servers in dc.values())
-        total_demand = sum(self._get_current_demand())
-        utilization = min(total_capacity, total_demand) / total_capacity if total_capacity > 0 else 0
-        return utilization * 100  # Scale the reward for better learning
 
 class PPOAgent:
     def __init__(self, state_dim, action_dim, lr=0.0003):
@@ -145,7 +183,7 @@ class PPOAgent:
         self.critic_optimizer.apply_gradients(zip(critic_grads, self.critic.trainable_variables))
 
 
-def train(env, agent, episodes=1000, batch_size=32):
+def train(env, agent, episodes=20, batch_size=32):
     for episode in range(episodes):
         state = env.reset()
         ep_rewards = []
@@ -155,6 +193,8 @@ def train(env, agent, episodes=1000, batch_size=32):
         while not done:
             action = agent.get_action(state)
             next_state, reward, done, _ = env.step(action)
+            
+            print(f"Episode {episode}, Time step: {env.time_step}, Action: {action}, Reward: {reward}")  # Debugging output
             
             states.append(state)
             actions.append(action)
@@ -179,8 +219,15 @@ def train(env, agent, episodes=1000, batch_size=32):
 
         if episode % 10 == 0:
             print(f"Episode {episode}, Average Reward: {np.mean(ep_rewards)}")
+            # Save intermediate actions
+            with open(f'actions_{episode}.json', 'w') as f:
+                json.dump(env.actions, f, indent=2)
 
+    # Save final actions
+    with open('actions.json', 'w') as f:
+        json.dump(env.actions, f, indent=2)
     return env.actions
+
 
 # Usage
 env = ServerFleetEnvironment('data/datacenters.csv', 'data/demand.csv', 'data/selling_prices.csv', 'data/servers.csv')

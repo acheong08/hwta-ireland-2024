@@ -1,0 +1,849 @@
+[
+  {
+    "time_step": 1,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "81cfc9fc-ef62-461b-9d3a-f07e885ed7a0",
+    "action": "buy"
+  },
+  {
+    "time_step": 3,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "dc37b575-e9b9-4635-be48-24870d2d5aaf",
+    "action": "buy"
+  },
+  {
+    "time_step": 5,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "71fccd39-d416-49f5-9755-0fac831a2b3d",
+    "action": "buy"
+  },
+  {
+    "time_step": 7,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "9184fe65-c975-49a4-a3dd-e0d1af3aee58",
+    "action": "buy"
+  },
+  {
+    "time_step": 9,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "fc6b27e1-3323-4405-8fd6-9cf92e85366d",
+    "action": "buy"
+  },
+  {
+    "time_step": 11,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "33013dfb-9939-44b6-a5a6-2039f159171c",
+    "action": "buy"
+  },
+  {
+    "time_step": 13,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "01cffc80-99c5-4f81-b040-bf5880caabe7",
+    "action": "buy"
+  },
+  {
+    "time_step": 15,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "e05254fe-885c-493a-b784-8af1ea5bd9ea",
+    "action": "buy"
+  },
+  {
+    "time_step": 17,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "12092fe6-c9ca-4fd8-800d-f62d5e1ea12c",
+    "action": "buy"
+  },
+  {
+    "time_step": 19,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "9e2c91af-7e6e-491c-908a-cb5d86a451df",
+    "action": "buy"
+  },
+  {
+    "time_step": 20,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S2",
+    "server_id": "5bdc4fca-6c15-4ced-aa91-2fa092350a85",
+    "action": "buy"
+  },
+  {
+    "time_step": 22,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "8e32f7f6-00b5-4f30-8e12-37b7cd887b02",
+    "action": "buy"
+  },
+  {
+    "time_step": 24,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "ee3fe259-36ac-4d01-947f-39620b44b621",
+    "action": "buy"
+  },
+  {
+    "time_step": 26,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "68fc5d6e-5081-469e-9137-1b2cab70d054",
+    "action": "buy"
+  },
+  {
+    "time_step": 28,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "cd2f2466-86f9-460a-8918-6758d26b81dc",
+    "action": "buy"
+  },
+  {
+    "time_step": 30,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "67bd93b6-fa96-405b-b5e7-1aeb9d90aeda",
+    "action": "buy"
+  },
+  {
+    "time_step": 32,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "a2f906cf-39cc-419f-87ca-f94ac0e25e23",
+    "action": "buy"
+  },
+  {
+    "time_step": 34,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "eb4cc534-10f8-4125-9829-af7cf0e0bde5",
+    "action": "buy"
+  },
+  {
+    "time_step": 36,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "3c691815-5854-41f5-8ac4-3f7fb4bac928",
+    "action": "buy"
+  },
+  {
+    "time_step": 38,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "f4169f80-df4d-47c6-8b44-fc02e27145dd",
+    "action": "buy"
+  },
+  {
+    "time_step": 40,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c10297d7-42dd-4b29-8dc3-bd04acc2cd47",
+    "action": "buy"
+  },
+  {
+    "time_step": 42,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "b59280f3-ec68-4292-ab90-91009963c69b",
+    "action": "buy"
+  },
+  {
+    "time_step": 44,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "2cc293c5-d7eb-45ea-b916-dbdadf2373e3",
+    "action": "buy"
+  },
+  {
+    "time_step": 46,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "8fdf1cb4-2043-4fd5-98b5-c05b6081cc55",
+    "action": "buy"
+  },
+  {
+    "time_step": 48,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "f7d31f56-cf16-4dba-bb56-646f2b6cc379",
+    "action": "buy"
+  },
+  {
+    "time_step": 50,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "9adde4d3-3180-4a3a-9f41-b967e1ffbe02",
+    "action": "buy"
+  },
+  {
+    "time_step": 52,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "58b5b3ff-2f07-4e5d-a024-0aa452773dc6",
+    "action": "buy"
+  },
+  {
+    "time_step": 54,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "0f2062c0-a328-495a-8f27-07e1196a59e7",
+    "action": "buy"
+  },
+  {
+    "time_step": 56,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "d67a1c06-9931-4c54-a86e-4d18a7a59139",
+    "action": "buy"
+  },
+  {
+    "time_step": 58,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "66ded161-eb9c-4738-abf0-a971774c5a6d",
+    "action": "buy"
+  },
+  {
+    "time_step": 60,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "6e52e67f-429c-482a-8f69-dbc54aaa490d",
+    "action": "buy"
+  },
+  {
+    "time_step": 62,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "27dadbe8-d512-4df4-9bab-17f6e00b724b",
+    "action": "buy"
+  },
+  {
+    "time_step": 64,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "21a9d45e-e4c7-4042-8d66-c70b465cfb8f",
+    "action": "buy"
+  },
+  {
+    "time_step": 66,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "600b5d41-e736-4949-8f44-140a64a22b47",
+    "action": "buy"
+  },
+  {
+    "time_step": 68,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "06ff09e4-3367-4f65-be39-c903039a00f2",
+    "action": "buy"
+  },
+  {
+    "time_step": 70,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c2b1343a-a718-41e8-b2b6-598109ba67da",
+    "action": "buy"
+  },
+  {
+    "time_step": 72,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "cbcf9a24-ed59-4f0e-8e5f-fc0ac11f416e",
+    "action": "buy"
+  },
+  {
+    "time_step": 74,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "468a1a3d-cddd-455e-913d-f1c4dcee5b52",
+    "action": "buy"
+  },
+  {
+    "time_step": 76,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "06cc9215-b126-4ffb-969d-38d7feb723c2",
+    "action": "buy"
+  },
+  {
+    "time_step": 78,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "efcccc2a-d69e-435e-92aa-cede482c3da3",
+    "action": "buy"
+  },
+  {
+    "time_step": 80,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "92df023b-3bc1-4cf7-90a7-6bb79a0b02ac",
+    "action": "buy"
+  },
+  {
+    "time_step": 82,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "6819e23a-676e-43d2-917a-9aeb71079e16",
+    "action": "buy"
+  },
+  {
+    "time_step": 84,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "06e25159-3374-4af4-863f-21669fecd167",
+    "action": "buy"
+  },
+  {
+    "time_step": 86,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "d5577ede-e109-4c94-9367-d685bee8ba02",
+    "action": "buy"
+  },
+  {
+    "time_step": 88,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "e481d8d3-645e-4d41-92cf-56949b5b4b2f",
+    "action": "buy"
+  },
+  {
+    "time_step": 90,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c3497dce-2af7-4de1-81f1-cf1a07dfb327",
+    "action": "buy"
+  },
+  {
+    "time_step": 92,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "3b42ec42-14ac-4520-88fe-99b9801fc0e6",
+    "action": "buy"
+  },
+  {
+    "time_step": 94,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "98e361c0-86e9-4cb0-9c4c-e870dbf0a1a8",
+    "action": "buy"
+  },
+  {
+    "time_step": 96,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "edb1c72c-30ab-4f3e-a559-079550f8f6b4",
+    "action": "buy"
+  },
+  {
+    "time_step": 97,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "3231b324-566d-491d-893d-1433431e2ef0",
+    "action": "buy"
+  },
+  {
+    "time_step": 98,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "660c5711-9fce-4aad-94bd-ecc119fbdcc3",
+    "action": "buy"
+  },
+  {
+    "time_step": 99,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "4b66d036-c61d-4380-b868-3db6cbc43589",
+    "action": "buy"
+  },
+  {
+    "time_step": 100,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "e6987990-21fa-4fa1-9edf-1704147db0cd",
+    "action": "buy"
+  },
+  {
+    "time_step": 101,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "1e5918e0-b7ed-479f-ad77-5757d48899ad",
+    "action": "buy"
+  },
+  {
+    "time_step": 102,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "8967aa58-b92a-4725-9d4e-7d198c5a2f08",
+    "action": "buy"
+  },
+  {
+    "time_step": 103,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "bb9299e8-eb1f-491d-908f-ee4de4d0030b",
+    "action": "buy"
+  },
+  {
+    "time_step": 104,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "636b7c7b-067d-497e-83d0-5099336574ef",
+    "action": "buy"
+  },
+  {
+    "time_step": 105,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "53ef3b43-d330-415c-8c43-a5dc4759f791",
+    "action": "buy"
+  },
+  {
+    "time_step": 106,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "f4542a5b-0083-450f-825d-97af56a7003f",
+    "action": "buy"
+  },
+  {
+    "time_step": 107,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c774cd93-5276-4c3c-9c41-e6a20ec4dbaa",
+    "action": "buy"
+  },
+  {
+    "time_step": 108,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "2b20f003-9a3f-4d04-97ec-fc2a1e9888b7",
+    "action": "buy"
+  },
+  {
+    "time_step": 109,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "6085399b-22f4-4103-901d-8687485e03bb",
+    "action": "buy"
+  },
+  {
+    "time_step": 110,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "827d1a9f-8320-462f-bd07-6839e4be5b1d",
+    "action": "buy"
+  },
+  {
+    "time_step": 111,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "d0651fb9-c173-4d9a-8313-2e456aadc3f8",
+    "action": "buy"
+  },
+  {
+    "time_step": 112,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "f4c01a43-1991-4a6c-9c62-1f77b2f54661",
+    "action": "buy"
+  },
+  {
+    "time_step": 113,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c6509831-9d01-4afb-b1fc-74596eade4db",
+    "action": "buy"
+  },
+  {
+    "time_step": 114,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "e965f070-6ae6-46ba-8d3e-2df43f1a702f",
+    "action": "buy"
+  },
+  {
+    "time_step": 115,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "718abb18-9bf0-43d8-ad8a-83e8aee2dea7",
+    "action": "buy"
+  },
+  {
+    "time_step": 116,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c5899d28-e7e4-4c12-8428-7c57ee2e5796",
+    "action": "buy"
+  },
+  {
+    "time_step": 117,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "fade592a-fc36-4eb8-beb0-129bc4c9e99d",
+    "action": "buy"
+  },
+  {
+    "time_step": 118,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "cabb4915-0970-45a8-aef8-53e4374bf3a7",
+    "action": "buy"
+  },
+  {
+    "time_step": 119,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "d26303cc-10ce-4269-92da-7789762d93a1",
+    "action": "buy"
+  },
+  {
+    "time_step": 120,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "219bbdb3-2304-4b39-8c1a-3a18a00c319a",
+    "action": "buy"
+  },
+  {
+    "time_step": 121,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "b869fa67-4e19-4f39-aed9-1d26537f7234",
+    "action": "buy"
+  },
+  {
+    "time_step": 122,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "d25317a0-0a56-4a31-a5e0-771af45079b0",
+    "action": "buy"
+  },
+  {
+    "time_step": 123,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "7d22495d-feda-45ac-8d3b-1237db2e06ba",
+    "action": "buy"
+  },
+  {
+    "time_step": 124,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "7da2020a-74b4-46f4-ac82-28a8ee22fc45",
+    "action": "buy"
+  },
+  {
+    "time_step": 125,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "ba321dac-ad59-4777-9467-33a56285ec72",
+    "action": "buy"
+  },
+  {
+    "time_step": 126,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "2912d722-3c6e-4103-876f-575f0922f592",
+    "action": "buy"
+  },
+  {
+    "time_step": 127,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "4437d906-005d-48e8-8f88-8c259ed110c7",
+    "action": "buy"
+  },
+  {
+    "time_step": 128,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "4d7b6b65-c3e2-42d8-9988-50a8d6fd3c6a",
+    "action": "buy"
+  },
+  {
+    "time_step": 129,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "82d16fb7-eb7f-49f0-96f7-c2ed69add476",
+    "action": "buy"
+  },
+  {
+    "time_step": 130,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "1eb01a27-475f-4e82-a6ee-f14e4e5f10fb",
+    "action": "buy"
+  },
+  {
+    "time_step": 131,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "7e00723c-c96d-410e-8899-3ad1a2e351b7",
+    "action": "buy"
+  },
+  {
+    "time_step": 132,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "0cfc8912-bb71-4ddc-8dce-b6a58b1b9b0a",
+    "action": "buy"
+  },
+  {
+    "time_step": 133,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "5dc48a48-8868-4739-89b3-706db7b03055",
+    "action": "buy"
+  },
+  {
+    "time_step": 134,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "7527d2e6-bfc7-4964-a070-534673de336b",
+    "action": "buy"
+  },
+  {
+    "time_step": 135,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "44175aa9-f33e-45e1-9de1-70fc73133276",
+    "action": "buy"
+  },
+  {
+    "time_step": 136,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "eb51f509-8908-4361-9a6b-d66a3642fcc3",
+    "action": "buy"
+  },
+  {
+    "time_step": 137,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "77b4c177-be84-4ebb-aad2-e097d02c63f3",
+    "action": "buy"
+  },
+  {
+    "time_step": 138,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "160bb97f-1baa-4f61-89ac-761d641ff7ff",
+    "action": "buy"
+  },
+  {
+    "time_step": 139,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "1302a27b-d435-4e2b-8846-7d93fce95061",
+    "action": "buy"
+  },
+  {
+    "time_step": 140,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "d84c455a-ba99-4b79-8742-7c8805fbd0a0",
+    "action": "buy"
+  },
+  {
+    "time_step": 141,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "2316dfe4-84c0-465f-98c2-ef40329d3a11",
+    "action": "buy"
+  },
+  {
+    "time_step": 142,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "7f42063c-c9aa-4727-ad86-b55e12db782c",
+    "action": "buy"
+  },
+  {
+    "time_step": 143,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "4546f826-dfa7-4bf4-934d-c7c66ed5477b",
+    "action": "buy"
+  },
+  {
+    "time_step": 144,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "6f33eca2-c9a9-46cf-bdba-49fa2c1c0154",
+    "action": "buy"
+  },
+  {
+    "time_step": 145,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "7343c829-7342-405d-b8b6-a0299dfaaffb",
+    "action": "buy"
+  },
+  {
+    "time_step": 146,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "0b61580a-aaae-4fe3-ae9d-88f81c8daee6",
+    "action": "buy"
+  },
+  {
+    "time_step": 147,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "8cfc0778-e7fd-4613-96aa-ab0b3e8d0e02",
+    "action": "buy"
+  },
+  {
+    "time_step": 148,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "8c23f93b-8667-4cbd-98ef-1ca6941f54c5",
+    "action": "buy"
+  },
+  {
+    "time_step": 149,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "0edc644b-480a-4ccf-ae85-ec5be0cf8b0a",
+    "action": "buy"
+  },
+  {
+    "time_step": 150,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "8fef5873-bed4-4124-8784-4296cadd0983",
+    "action": "buy"
+  },
+  {
+    "time_step": 151,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "9646f17a-435a-4e4b-807d-c56a49f81b9c",
+    "action": "buy"
+  },
+  {
+    "time_step": 152,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c97598f0-93df-4dd9-ba50-d5f51c7c411a",
+    "action": "buy"
+  },
+  {
+    "time_step": 153,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "4046b58f-6f89-4199-8d8b-265c60b47061",
+    "action": "buy"
+  },
+  {
+    "time_step": 154,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "5e1ea1fd-14ac-4bfc-a32a-a591fe7f2fb2",
+    "action": "buy"
+  },
+  {
+    "time_step": 155,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "5a9bb1ab-c3e5-4683-88ab-69fbbf302bd2",
+    "action": "buy"
+  },
+  {
+    "time_step": 156,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "469bb75c-a9e9-43ca-8899-acde22335186",
+    "action": "buy"
+  },
+  {
+    "time_step": 157,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "a195f5f6-1c38-47d7-864b-aecd2d771a9a",
+    "action": "buy"
+  },
+  {
+    "time_step": 158,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c41fd825-5b56-4b61-86f5-062d5147c8f8",
+    "action": "buy"
+  },
+  {
+    "time_step": 159,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "e4f0c7c0-e163-4035-9cd3-a36bea03ebb5",
+    "action": "buy"
+  },
+  {
+    "time_step": 160,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "5c5ec4b5-a153-4c45-99ca-d9643e5c0833",
+    "action": "buy"
+  },
+  {
+    "time_step": 161,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "2e32d092-1e92-49b3-b0b1-624cb21121d5",
+    "action": "buy"
+  },
+  {
+    "time_step": 162,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "0bba8a25-63e6-4204-b38e-7689dc3e9a7a",
+    "action": "buy"
+  },
+  {
+    "time_step": 163,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "4face2ce-7e3f-4a22-959c-ece455c1319e",
+    "action": "buy"
+  },
+  {
+    "time_step": 164,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "c73094ea-0c4c-4b73-ae78-3586e7f3b36d",
+    "action": "buy"
+  },
+  {
+    "time_step": 165,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "2cc6f191-d2c3-431f-9659-1877b20e1e4e",
+    "action": "buy"
+  },
+  {
+    "time_step": 166,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "32c66713-54ec-495d-a980-864606a38566",
+    "action": "buy"
+  },
+  {
+    "time_step": 167,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "35d8fd1e-8de1-4714-919b-8755177add4e",
+    "action": "buy"
+  },
+  {
+    "time_step": 168,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "1378df51-6047-40d3-80b7-76b0392978ea",
+    "action": "buy"
+  }
+]
