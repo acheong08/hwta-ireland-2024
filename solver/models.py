@@ -2,7 +2,12 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 
-SCALE = 100
+scale = 100
+
+
+def set_scale(n: int):
+    global scale
+    scale = n
 
 
 class ServerGeneration(Enum):
@@ -30,7 +35,9 @@ class Datacenter:
 
     def setup(self):
         self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
-        self.cost_of_energy = int(self.cost_of_energy * SCALE)
+        self.cost_of_energy = self.cost_of_energy * scale
+        if scale != 1:
+            self.cost_of_energy = int(self.cost_of_energy)
         return self
 
 
@@ -43,7 +50,9 @@ class SellingPrices:
     def setup(self):
         self.server_generation = ServerGeneration(self.server_generation)
         self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
-        self.selling_price = int(self.selling_price * SCALE)
+        self.selling_price = self.selling_price * scale
+        if scale != 1:
+            self.selling_price = int(self.selling_price)
         return self
 
 
@@ -69,8 +78,11 @@ class Server:
         self.server_generation = ServerGeneration(self.server_generation)
         self.server_type = ServerType(self.server_type)
         self.release_time = json.loads(self.release_time)  # type: ignore[reportArgumentType]
-        self.purchase_price = int(self.purchase_price * SCALE)
-        self.average_maintenance_fee = int(self.average_maintenance_fee * SCALE)
+        self.purchase_price = self.purchase_price * scale
+        self.average_maintenance_fee = self.average_maintenance_fee * scale
+        if scale != 1:
+            self.purchase_price = int(self.purchase_price)
+            self.average_maintenance_fee = int(self.average_maintenance_fee)
         return self
 
 

@@ -137,14 +137,14 @@ class Evaluator:
 
     def energy_cost(self):
         total_cost = 0
-        for generation, datacenters in self.operating_servers.items():
-            for datacenter, servers in datacenters.items():
-                total_servers = sum(amount for amount, _ in servers)
-                total_cost += (
-                    self.server_map[generation].energy_consumption
-                    * self.datacenter_map[datacenter].cost_of_energy
-                    * total_servers
-                )
+        for generation in self.operating_servers:
+            for datacenter in self.operating_servers[generation]:
+                for amount, _ in self.operating_servers[generation][datacenter]:
+                    total_cost += (
+                        self.server_map[generation].energy_consumption
+                        * self.datacenter_map[datacenter].cost_of_energy
+                        * amount
+                    )
         return total_cost
 
     def maintenance_cost(self, current_time: int):
@@ -215,7 +215,7 @@ class Evaluator:
                 count += 1
                 total_capacity = sum(
                     (
-                        amount * self.server_map[generation].capacity
+                        self.adjust_capacity(amount, generation)
                         if self.datacenter_map[datacenter].latency_sensitivity == sen
                         else 0
                     )
@@ -262,8 +262,8 @@ class Evaluator:
 
 
 if __name__ == "__main__":
-    models.SCALE = 1
-    seed = 123
+    models.scale = 1
+    seed = 1061
     np.random.seed(seed)
     solution = get_solution(f"output/{seed}.json")
 
