@@ -129,7 +129,7 @@ class Evaluator:
     def expire_servers(self, ts: int):
         for generation, datacenters in self.operating_servers.items():
             life_expectancy = self.server_map[generation].life_expectancy
-            for datacenter, servers in datacenters.items():
+            for _, servers in datacenters.items():
                 servers[:] = [
                     (amount, bought_time)
                     for amount, bought_time in servers
@@ -277,7 +277,7 @@ class Evaluator:
             if self.verbose:
                 # Round to 2 decimals
                 print(
-                    f"{ts}: O:{round(total_score, 2)} U:{round(utilization,2)} L:{round(life_span, 2)} P:{round(profit, 2)} R:{round(revenue,2)} C:{round(cost,2)}"
+                    f"{ts}: O:{round(total_score, 2)} U:{round(utilization,2)} L:{round(life_span, 2)} P:{round(profit, 2)}"
                 )
         return total_score
 
@@ -309,7 +309,7 @@ if __name__ == "__main__":
             constants.get_servers(),
             constants.get_datacenters(),
             constants.get_selling_prices(),
-            verbose=False,
+            verbose=True,
         )
         score = evaluator.get_score()
         print(f"{f}: {score}")

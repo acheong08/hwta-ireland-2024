@@ -1,10 +1,12 @@
 # pyright: basic
-
 import json
 import subprocess
 
-from evaluation import evaluation_function
-from utils import load_problem_data, load_solution
+import numpy as np
+
+import constants
+from evaluation_v2 import Evaluator
+from reverse import get_solution
 
 
 def get_score(f: str, seed: int, verbose: bool = False) -> float:
@@ -15,17 +17,16 @@ def get_score(f: str, seed: int, verbose: bool = False) -> float:
     if not verbose:
         if md5sum in solution_scores:
             return solution_scores[md5sum]
-    solution = load_solution(f)
-    demand, datacenters, servers, selling_prices = load_problem_data()
-    score: int = evaluation_function(  # type: ignore[]
+    np.random.seed(seed)
+    solution = get_solution(f)
+    evaluator = Evaluator(
         solution,
-        demand,
-        datacenters,
-        servers,
-        selling_prices,
-        seed=seed,
-        verbose=verbose,
+        constants.get_demand(),
+        constants.get_servers(),
+        constants.get_datacenters(),
+        constants.get_selling_prices(),
     )
+    score = evaluator.get_score()
     solution_scores[md5sum] = score
     json.dump(solution_scores, open("solution_scores.json", "w"))
     return score

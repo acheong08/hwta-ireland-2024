@@ -24,7 +24,7 @@ for f in solutions:
         seed = int(fname.split("_")[0])
     else:
         seed = int(fname.split(".")[0])
-    score = get_score(f, seed, verbose=False)
+    score = get_score(f, seed, verbose=True)
 
     # get md5sum of the file
 

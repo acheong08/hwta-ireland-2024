@@ -48,7 +48,7 @@ if __name__ == "__main__":
                 if new_score > current_score:
                     print("new score is better:", new_score)
                     os.system(f"mv output/{seed}_{number}.json merged/{seed}.json")
-                else:
+                elif new_score < current_score:
                     print("new score is worse:", new_score)
                     os.system(f"rm output/{seed}_{number}.json")
                 print("--------------------------------")
