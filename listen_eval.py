@@ -42,6 +42,10 @@ if __name__ == "__main__":
             if todo_evals:
                 seed, number = todo_evals.pop()
                 print(f"seed: {seed}, number: {number}")
+                if not os.path.isfile(f"merged/{seed}.json"):
+                    print("No current solution")
+                    os.system(f"mv output/{seed}_{number}.json merged/{seed}.json")
+                    continue
                 current_score = get_score(f"merged/{seed}.json", seed)
                 print(f"current score: {current_score}")
                 new_score = get_score(f"output/{seed}_{number}.json", seed)

@@ -10,11 +10,10 @@ import pandas as pd
 from constants import get_datacenters, get_selling_prices, get_servers
 from evaluation import get_actual_demand  # type: ignore[import]
 from generate import generate
-from seeds import known_seeds
 from solver.models import Demand
 from solver.sat import solve
 
-seeds: list[int] = known_seeds("training")
+seeds: list[int] = [3329, 4201, 8761, 2311, 2663, 4507, 6247, 2281, 4363, 5693]
 
 known_solutions: set[str] = set()
 

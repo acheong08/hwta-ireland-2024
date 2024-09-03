@@ -12,7 +12,7 @@ if len(sys.argv) != 3:
 # List files in output directory
 solutions = [
     (f"./{sys.argv[1]}/{f}" if f.endswith(".json") else None)
-    for f in os.listdir("output")
+    for f in os.listdir(sys.argv[1] or "output")
 ]
 
 # Create merged directory if it doesn't exist
