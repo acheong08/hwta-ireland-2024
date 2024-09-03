@@ -1,4 +1,6 @@
+import os
 import statistics
+from sys import argv
 
 import numpy as np
 from scipy.stats import truncweibull_min  # type: ignore[import]
@@ -6,6 +8,7 @@ from scipy.stats import truncweibull_min  # type: ignore[import]
 import constants
 from reverse import get_solution
 from solver import models
+from solver.debuggy import debug_on  # type: ignore[import]
 
 
 def weibullshit(capacity: int):
@@ -37,10 +40,8 @@ def get_maintenance_cost(
 
 
 class Evaluator:
-    operating_servers: dict[
-        models.ServerGeneration, dict[str, list[tuple[int, int]]]
-    ] = {}
-    actions: dict[int, list[models.SolutionEntry]] = {}
+    operating_servers: dict[models.ServerGeneration, dict[str, list[tuple[int, int]]]]
+    actions: dict[int, list[models.SolutionEntry]]
     verbose: bool = False
 
     def __init__(
@@ -52,6 +53,8 @@ class Evaluator:
         selling_prices: list[models.SellingPrices],
         verbose: bool = False,
     ) -> None:
+        self.actions = {}
+        self.operating_servers = {}
         for action in actions:
             if self.actions.get(action.timestep) is None:
                 self.actions[action.timestep] = []
@@ -86,6 +89,8 @@ class Evaluator:
         if action is None:
             return
         for a in action:
+            if a.timestep != ts:
+                raise ValueError("Action timestep does not match")
             if a.action == models.Action.BUY:
                 self.buy(a)
             elif a.action == models.Action.DISMISS:
@@ -147,6 +152,7 @@ class Evaluator:
                     )
         return total_cost
 
+    @debug_on(ValueError)
     def maintenance_cost(self, current_time: int):
         total_cost = 0
         for generation, datacenters in self.operating_servers.items():
@@ -154,6 +160,8 @@ class Evaluator:
             for _, servers in datacenters.items():
                 for amount, bought_time in servers:
                     operating_time = current_time - bought_time + 1
+                    if operating_time <= 0:
+                        raise ValueError("operating time should not be negative")
                     cost = get_maintenance_cost(
                         self.server_map[generation].average_maintenance_fee,
                         operating_time,
@@ -263,16 +271,35 @@ class Evaluator:
 
 if __name__ == "__main__":
     models.scale = 1
-    seed = 1061
-    np.random.seed(seed)
-    solution = get_solution(f"output/{seed}.json")
 
-    evaluator = Evaluator(
-        solution,
-        constants.get_demand(),
-        constants.get_servers(),
-        constants.get_datacenters(),
-        constants.get_selling_prices(),
-        verbose=True,
-    )
-    print(evaluator.get_score())
+    if len(argv) != 2:
+        print("Usage: evaluation_v2.py <directory>")
+        exit()
+    le_dir = argv[1]
+    files = [f if f.endswith(".json") else "" for f in os.listdir(le_dir)]
+    while "" in files:
+        files.remove("")
+    files.sort()
+    total_score = 0
+    for f in files:
+        seed = 0
+        if len(f.split("_")) == 2:
+            seed = int(f.split("_")[0])
+        else:
+            seed = int(f.split(".")[0])
+        np.random.seed(seed)
+        solution = get_solution(f"{le_dir}/{f}")
+
+        evaluator = Evaluator(
+            solution,
+            constants.get_demand(),
+            constants.get_servers(),
+            constants.get_datacenters(),
+            constants.get_selling_prices(),
+            verbose=False,
+        )
+        score = evaluator.get_score()
+        print(f"{f}: {score}")
+
+        total_score += score
+    print(f"Average score: {total_score / len(files)}")
