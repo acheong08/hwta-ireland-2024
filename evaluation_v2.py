@@ -215,11 +215,9 @@ class Evaluator:
         return self.demand[ts].get(generation, {}).get(sen, 0)
 
     def average_utilization(self, ts: int):
-        total_utilization = 0
-        count = 0
+        utilizations: list[float] = []
         for generation in models.ServerGeneration:
             for sen in models.Sensitivity:
-                count += 1
                 total_capacity = sum(
                     (
                         self.adjust_capacity(amount, generation)
@@ -229,14 +227,16 @@ class Evaluator:
                     for datacenter in self.operating_servers.get(generation, {})
                     for amount, _ in self.operating_servers[generation][datacenter]
                 )
-                if total_capacity == 0:
-                    total_utilization += 1
-                else:
-                    total_utilization += (
-                        min(total_capacity, self.get_demand(ts, generation, sen))
-                        / total_capacity
-                    )
-        return total_utilization / count
+                demand = self.get_demand(ts, generation, sen)
+
+                if total_capacity > 0:
+                    utilizations.append(min(total_capacity, demand) / total_capacity)
+                elif demand > 0:
+                    # Handle case where there's demand but no capacity
+                    # You might want to log this situation or handle it differently
+                    pass
+
+        return sum(utilizations) / len(utilizations) if utilizations else 0
 
     def normalized_lifespan(self, ts: int) -> float:
         weighted_lifespans: list[float] = []
@@ -309,7 +309,7 @@ if __name__ == "__main__":
             constants.get_servers(),
             constants.get_datacenters(),
             constants.get_selling_prices(),
-            verbose=True,
+            verbose=False,
         )
         score = evaluator.get_score()
         print(f"{f}: {score}")
