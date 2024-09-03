@@ -2,6 +2,8 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 
+SCALE = 100
+
 
 class ServerGeneration(Enum):
     CPU_S1 = "CPU.S1"
@@ -28,7 +30,7 @@ class Datacenter:
 
     def setup(self):
         self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
-        self.cost_of_energy = int(self.cost_of_energy * 100)
+        self.cost_of_energy = int(self.cost_of_energy * SCALE)
         return self
 
 
@@ -41,7 +43,7 @@ class SellingPrices:
     def setup(self):
         self.server_generation = ServerGeneration(self.server_generation)
         self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
-        self.selling_price = int(self.selling_price * 100)
+        self.selling_price = int(self.selling_price * SCALE)
         return self
 
 
@@ -67,8 +69,8 @@ class Server:
         self.server_generation = ServerGeneration(self.server_generation)
         self.server_type = ServerType(self.server_type)
         self.release_time = json.loads(self.release_time)  # type: ignore[reportArgumentType]
-        self.purchase_price = int(self.purchase_price * 100)
-        self.average_maintenance_fee = int(self.average_maintenance_fee * 100)
+        self.purchase_price = int(self.purchase_price * SCALE)
+        self.average_maintenance_fee = int(self.average_maintenance_fee * SCALE)
         return self
 
 

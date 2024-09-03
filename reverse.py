@@ -6,16 +6,16 @@ from solver.models import Action, ServerGeneration, SolutionEntry
 # from utils import save_solution  #. type: ignore[import]
 
 
-def get_solution():
+def get_solution(f: str = "output/1741.json"):
 
-    data: list[dict[str, int | str]] = json.load(open("output/1741.json"))
+    data: list[dict[str, int | str]] = json.load(open(f))
 
     aggregate: dict[int, dict[str, dict[ServerGeneration, int]]] = {
         ts: {
             dc.datacenter_id: {gen: 0 for gen in ServerGeneration}
             for dc in get_datacenters()
         }
-        for ts in range(1, 168)
+        for ts in range(1, 169)
     }
 
     for entry in data:
