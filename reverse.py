@@ -35,8 +35,6 @@ def get_solution(f: str = "output/1741.json"):
                     if count == 0:
                         continue
                     solutions.append(SolutionEntry(ts, dc, gen, act, count))
-    # Sort solution by timestep
-    solutions.sort(key=lambda x: x.timestep)
     return solutions
 
 
