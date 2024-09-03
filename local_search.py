@@ -1,3 +1,4 @@
+import copy
 import json
 
 import numpy as np
@@ -12,7 +13,7 @@ servers = constants.get_servers()
 datacenters = constants.get_datacenters()
 selling_prices = constants.get_selling_prices()
 
-for seed in [1741, 2237, 2543, 3163, 4799, 6053, 8237, 8501, 8933]:
+for seed in [1061, 1741, 2237, 2543, 3163, 4799, 6053, 8237, 8501, 8933]:
     np.random.seed(seed)
     demand = constants.get_demand()
 
@@ -25,49 +26,45 @@ for seed in [1741, 2237, 2543, 3163, 4799, 6053, 8237, 8501, 8933]:
         )
         return evaluator.get_score()
 
-    initial_solution = reverse.get_solution(f"merged/{seed}.json")
+    initial_solution = reverse.get_solution(f"output/{seed}.json")
 
     best_solution = initial_solution.copy()
     current_solution = initial_solution.copy()
+    # Preprocessing: manually add dismisses to the end of the lifespan
+    for entry in initial_solution:
+        if entry.action != models.Action.BUY:
+            raise ValueError("Other actions not supported")
+        entry = copy.deepcopy(entry)
+        entry.timestep = entry.timestep + 96
+        entry.action = models.Action.DISMISS
+        current_solution.append(entry)
     current_score = get_score(current_solution, seed)
     print("Initial score:", current_score)
     improved = True
 
     try:
-        while improved:
-            improved = False
-            for entry in current_solution:
-                # Try increasing the amount
-                entry.amount += 1
+        for entry in current_solution:
+            if entry.action != models.Action.DISMISS:
+                continue
+            improved = True
+            while improved:
+                improved = False
+                entry.timestep -= 1
                 new_score = get_score(current_solution, seed)
-                if new_score > current_score:
+                if new_score >= current_score:
                     print("New score:", current_score)
                     current_score = new_score
                     improved = True
                     best_solution = current_solution.copy()
                     json.dump(
                         generate.generate(best_solution, servers),
-                        open(f"output/{seed}.json", "w"),
+                        open(f"local/{seed}.json", "w"),
                     )
                 else:
-                    # If increasing didn't help, try decreasing
-                    entry.amount -= 2  # Subtract 2 because we added 1 before
-                    if entry.amount < 0:
-                        entry.amount = 0
-                    new_score = get_score(current_solution, seed)
-                    if new_score > current_score:
-                        print("New score:", current_score)
-                        current_score = new_score
-                        improved = True
-                        best_solution = current_solution.copy()
-                        json.dump(
-                            generate.generate(best_solution, servers),
-                            open(f"output/{seed}.json", "w"),
-                        )
-                    else:
-                        # If neither helped, revert to original
-                        entry.amount += 1
+                    # Restore the previous state
+                    entry.timestep += 1
+
     except KeyboardInterrupt:
         json.dump(
-            generate.generate(best_solution, servers), open(f"output/{seed}.json", "w")
+            generate.generate(best_solution, servers), open(f"local/{seed}.json", "w")
         )

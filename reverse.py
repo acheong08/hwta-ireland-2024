@@ -21,6 +21,8 @@ def get_solution(f: str = "output/1741.json"):
     }
 
     for entry in data:
+        if int(entry["time_step"]) > 168:
+            continue
         aggregate[int(entry["time_step"])][str(entry["datacenter_id"])][
             ServerGeneration(entry["server_generation"])
         ][Action(entry["action"])] += 1

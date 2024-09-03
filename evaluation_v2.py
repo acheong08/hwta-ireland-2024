@@ -296,8 +296,8 @@ class Evaluator:
                         f"{ts}: O:{round(total_score, 2)} U:{round(utilization,2)} L:{round(life_span, 2)} P:{round(profit, 2)}"
                     )
             return total_score
-        except Exception:
-            # print(e)
+        except Exception as e:
+            print(e)
             return 0
 
 

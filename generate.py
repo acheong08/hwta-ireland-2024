@@ -1,8 +1,10 @@
 from constants import get_servers
+from solver.debuggy import debug_on  # type: ignore[import]
 from solver.models import Action, Server, ServerGeneration, SolutionEntry
 from utils import save_solution  # type: ignore[import]
 
 
+@debug_on(Exception)
 def generate(
     entries: list[SolutionEntry], servers: list[Server]
 ) -> list[dict[str, str | int]]:
@@ -37,12 +39,7 @@ def generate(
                 )
                 counter += 1
         elif entry.action == Action.DISMISS:
-            # Pop until we have no more expired servers
-            while (
-                ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
-                <= entry.timestep
-            ):
-                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
+
             for _ in range(entry.amount):
                 server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
                 solution.append(
@@ -54,6 +51,13 @@ def generate(
                         "action": "dismiss",
                     }
                 )
+            # # Pop until we have no more expired servers
+            # while (
+            #     len(ids[entry.datacenter_id][entry.server_generation]) > 0
+            #     and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
+            #     <= entry.timestep
+            # ):
+            #     _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
     return solution
 
 
