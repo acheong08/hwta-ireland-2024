@@ -156,7 +156,7 @@ class Evaluator:
         total_cost = 0
         for generation, datacenters in self.operating_servers.items():
             server = self.server_map[generation]
-            for _, servers in datacenters.items():
+            for dc, servers in datacenters.items():
                 for amount, bought_time in servers:
                     operating_time = current_time - bought_time + 1
                     if operating_time <= 0:
@@ -262,24 +262,43 @@ class Evaluator:
         else:
             return 1.0
 
+    def check_capacity(self):
+        for datacenter in self.datacenter_map:
+            utilized = sum(
+                amount * self.server_map[generation].slots_size
+                for generation in self.operating_servers
+                for amount, _ in self.operating_servers[generation].get(datacenter, [])
+            )
+            if utilized > self.datacenter_map[datacenter].slots_capacity:
+                raise ValueError("Server capacity exceeded")
+
     def get_score(self):
-        total_score = 0
-        for ts in range(1, 169):
-            self.do_action(ts)
-            self.expire_servers(ts)
-            cost = self.buying_cost(ts) + self.energy_cost() + self.maintenance_cost(ts)
-            revenue = self.revenue(ts)
-            profit = revenue - cost
-            utilization = self.average_utilization(ts)
-            life_span = self.normalized_lifespan(ts)
-            score = profit * utilization * life_span
-            total_score += score
-            if self.verbose:
-                # Round to 2 decimals
-                print(
-                    f"{ts}: O:{round(total_score, 2)} U:{round(utilization,2)} L:{round(life_span, 2)} P:{round(profit, 2)}"
+        try:
+            total_score = 0
+            for ts in range(1, 169):
+                self.do_action(ts)
+                self.expire_servers(ts)
+                self.check_capacity()
+                cost = (
+                    self.buying_cost(ts)
+                    + self.energy_cost()
+                    + self.maintenance_cost(ts)
                 )
-        return total_score
+                revenue = self.revenue(ts)
+                profit = revenue - cost
+                utilization = self.average_utilization(ts)
+                life_span = self.normalized_lifespan(ts)
+                score = profit * utilization * life_span
+                total_score += score
+                if self.verbose:
+                    # Round to 2 decimals
+                    print(
+                        f"{ts}: O:{round(total_score, 2)} U:{round(utilization,2)} L:{round(life_span, 2)} P:{round(profit, 2)}"
+                    )
+            return total_score
+        except Exception:
+            # print(e)
+            return 0
 
 
 if __name__ == "__main__":
@@ -309,7 +328,7 @@ if __name__ == "__main__":
             constants.get_servers(),
             constants.get_datacenters(),
             constants.get_selling_prices(),
-            verbose=True,
+            verbose=False,
         )
         score = evaluator.get_score()
         print(f"{f}: {score}")

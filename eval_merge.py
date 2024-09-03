@@ -28,7 +28,7 @@ for f in solutions:
 
     # EVALUATE THE SOLUTION
     score = get_score(f, seed, rerun=False)
-    score2 = get_score(f"./{sys.argv[2]}/{seed}.json", seed, rerun=True)
+    score2 = get_score(f"./{sys.argv[2]}/{seed}.json", seed, rerun=False)
 
     print(f"{score} vs {score2}")
     if score > score2:

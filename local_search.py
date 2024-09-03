@@ -8,25 +8,23 @@ import generate
 import reverse
 from solver import models
 
-seed = 1061
-np.random.seed(seed)
-demand = constants.get_demand()
 servers = constants.get_servers()
 datacenters = constants.get_datacenters()
 selling_prices = constants.get_selling_prices()
 
+for seed in [1741, 2237, 2543, 3163, 4799, 6053, 8237, 8501, 8933]:
+    np.random.seed(seed)
+    demand = constants.get_demand()
 
-def get_score(
-    solution: list[models.SolutionEntry],
-    seed: int,
-) -> float:
-    evaluator = evaluation_v2.Evaluator(
-        solution, demand, servers, datacenters, selling_prices
-    )
-    return evaluator.get_score()
+    def get_score(
+        solution: list[models.SolutionEntry],
+        seed: int,
+    ) -> float:
+        evaluator = evaluation_v2.Evaluator(
+            solution, demand, servers, datacenters, selling_prices
+        )
+        return evaluator.get_score()
 
-
-if __name__ == "__main__":
     initial_solution = reverse.get_solution(f"merged/{seed}.json")
 
     best_solution = initial_solution.copy()
@@ -47,6 +45,10 @@ if __name__ == "__main__":
                     current_score = new_score
                     improved = True
                     best_solution = current_solution.copy()
+                    json.dump(
+                        generate.generate(best_solution, servers),
+                        open(f"output/{seed}.json", "w"),
+                    )
                 else:
                     # If increasing didn't help, try decreasing
                     entry.amount -= 2  # Subtract 2 because we added 1 before
@@ -58,10 +60,14 @@ if __name__ == "__main__":
                         current_score = new_score
                         improved = True
                         best_solution = current_solution.copy()
+                        json.dump(
+                            generate.generate(best_solution, servers),
+                            open(f"output/{seed}.json", "w"),
+                        )
                     else:
                         # If neither helped, revert to original
                         entry.amount += 1
     except KeyboardInterrupt:
         json.dump(
-            generate.generate(best_solution, servers), open(f"output/{seed}.json")
+            generate.generate(best_solution, servers), open(f"output/{seed}.json", "w")
         )
