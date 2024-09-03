@@ -10,9 +10,11 @@ def get_solution(f: str = "output/1741.json"):
 
     data: list[dict[str, int | str]] = json.load(open(f))
 
-    aggregate: dict[int, dict[str, dict[ServerGeneration, int]]] = {
+    aggregate: dict[int, dict[str, dict[ServerGeneration, dict[Action, int]]]] = {
         ts: {
-            dc.datacenter_id: {gen: 0 for gen in ServerGeneration}
+            dc.datacenter_id: {
+                gen: {act: 0 for act in Action} for gen in ServerGeneration
+            }
             for dc in get_datacenters()
         }
         for ts in range(1, 169)
@@ -21,17 +23,18 @@ def get_solution(f: str = "output/1741.json"):
     for entry in data:
         aggregate[int(entry["time_step"])][str(entry["datacenter_id"])][
             ServerGeneration(entry["server_generation"])
-        ] += 1
+        ][Action(entry["action"])] += 1
 
     solutions: list[SolutionEntry] = []
 
     for ts in aggregate:
         for dc in aggregate[ts]:
             for gen in aggregate[ts][dc]:
-                count = aggregate[ts][dc][gen]
-                if count == 0:
-                    continue
-                solutions.append(SolutionEntry(ts, dc, gen, Action.BUY, count))
+                for act in aggregate[ts][dc][gen]:
+                    count = aggregate[ts][dc][gen][act]
+                    if count == 0:
+                        continue
+                    solutions.append(SolutionEntry(ts, dc, gen, act, count))
     # Sort solution by timestep
     solutions.sort(key=lambda x: x.timestep)
     return solutions

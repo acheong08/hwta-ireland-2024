@@ -1,5 +1,4 @@
 import os
-import statistics
 from sys import argv
 
 import numpy as np
@@ -108,14 +107,14 @@ class Evaluator:
             raise ValueError("Not enough servers to dismiss")
 
         remaining: int = a.amount
-        while remaining > 0 and servers:
-            amount, bought_time = servers[0]  # type: ignore[reportUnknownVariableType]
-            if amount <= remaining:
-                _ = servers.pop(0)
-                remaining -= amount  # type: ignore[reportUnknownVariableType]
-            else:
-                servers[0] = (amount - remaining, bought_time)
-                remaining = 0
+        for i, server in enumerate(servers):
+            if remaining == 0:
+                break
+            m = min(server[0], remaining)
+            servers[i] = (server[0] - m, server[1])
+            remaining -= m
+        if remaining != 0:
+            raise ValueError("BUG! Servers not dismissed")
 
     def buy(self, a: models.SolutionEntry):
         if self.operating_servers.get(a.server_generation) is None:
@@ -169,8 +168,8 @@ class Evaluator:
                     )
                     total_cost += (
                         cost
-                        * self.adjust_capacity(amount, generation)
-                        / self.server_map[generation].capacity
+                        # * self.adjust_capacity(amount, generation)
+                        * amount
                     )
         return total_cost
 
@@ -240,14 +239,28 @@ class Evaluator:
         return total_utilization / count
 
     def normalized_lifespan(self, ts: int) -> float:
-        servers = [
-            # Operating time divided by life expectancy
-            (ts - bought_time + 1) / self.server_map[generation].life_expectancy
-            for generation in self.operating_servers
-            for datacenter in self.operating_servers[generation]
-            for _, bought_time in self.operating_servers[generation][datacenter]
-        ]
-        return statistics.mean(servers) if len(servers) > 0 else 1.0
+        weighted_lifespans: list[float] = []
+        total_amount = 0
+
+        for generation in self.operating_servers:
+            for datacenter in self.operating_servers[generation]:
+                for amount, bought_time in self.operating_servers[generation][
+                    datacenter
+                ]:
+                    if amount > 0:
+                        lifespan = (ts - bought_time + 1) / self.server_map[
+                            generation
+                        ].life_expectancy
+                        weighted_lifespans.append(lifespan * amount)
+                        total_amount += amount
+                    else:
+                        weighted_lifespans.append(amount)  # This will be 0
+                        total_amount += amount  # This will be 0
+
+        if total_amount > 0:
+            return sum(weighted_lifespans) / total_amount
+        else:
+            return 1.0
 
     def get_score(self):
         total_score = 0
@@ -296,7 +309,7 @@ if __name__ == "__main__":
             constants.get_servers(),
             constants.get_datacenters(),
             constants.get_selling_prices(),
-            verbose=False,
+            verbose=True,
         )
         score = evaluator.get_score()
         print(f"{f}: {score}")

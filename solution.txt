@@ -1,1 +1,2 @@
 1 DC1 ServerGeneration.CPU_S1 Action.BUY 1
+60 DC1 ServerGeneration.CPU_S1 Action.DISMISS 1
