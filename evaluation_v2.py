@@ -7,7 +7,6 @@ from scipy.stats import truncweibull_min  # type: ignore[import]
 import constants
 from reverse import get_solution
 from solver import models
-from solver.debuggy import debug_on  # type: ignore[import]
 
 
 def weibullshit(capacity: int):
@@ -51,6 +50,7 @@ class Evaluator:
         datacenters: list[models.Datacenter],
         selling_prices: list[models.SellingPrices],
         verbose: bool = False,
+        plot_generation: models.ServerGeneration | None = None,
     ) -> None:
         self.actions = {}
         self.operating_servers = {}
@@ -82,6 +82,13 @@ class Evaluator:
                 sp.latency_sensitivity
             ] = sp.selling_price
         self.verbose = verbose
+        self.demand_history: list[dict[models.Sensitivity, int]] = [
+            {sen: 0 for sen in models.Sensitivity} for _ in range(169)
+        ]
+        self.capacity_history: list[dict[models.Sensitivity, int]] = [
+            {sen: 0 for sen in models.Sensitivity} for _ in range(169)
+        ]
+        self.plot_generation = plot_generation
 
     def do_action(self, ts: int):
         action = self.actions.get(ts)
@@ -151,12 +158,11 @@ class Evaluator:
                     )
         return total_cost
 
-    @debug_on(ValueError)
     def maintenance_cost(self, current_time: int):
         total_cost = 0
         for generation, datacenters in self.operating_servers.items():
             server = self.server_map[generation]
-            for dc, servers in datacenters.items():
+            for _, servers in datacenters.items():
                 for amount, bought_time in servers:
                     operating_time = current_time - bought_time + 1
                     if operating_time <= 0:
@@ -272,6 +278,28 @@ class Evaluator:
             if utilized > self.datacenter_map[datacenter].slots_capacity:
                 raise ValueError("Server capacity exceeded")
 
+    def save_history(self, ts: int):
+        if self.plot_generation is None:
+            return
+        for sen in models.Sensitivity:
+            total_capacity = sum(
+                (
+                    amount
+                    if self.datacenter_map[datacenter].latency_sensitivity == sen
+                    else 0
+                )
+                for datacenter in self.operating_servers.get(self.plot_generation, {})
+                for amount, _ in self.operating_servers[self.plot_generation][
+                    datacenter
+                ]
+            )
+            self.capacity_history[ts][sen] = total_capacity
+            demand = (
+                self.get_demand(ts, self.plot_generation, sen)
+                // self.server_map[self.plot_generation].capacity
+            )
+            self.demand_history[ts][sen] = demand
+
     def get_score(self):
         try:
             total_score = 0
@@ -295,6 +323,7 @@ class Evaluator:
                     print(
                         f"{ts}: O:{round(total_score, 2)} U:{round(utilization,2)} L:{round(life_span, 2)} P:{round(profit, 2)}"
                     )
+                self.save_history(ts)
             return total_score
         except Exception as e:
             print(e)

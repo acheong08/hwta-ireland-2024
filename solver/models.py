@@ -83,6 +83,7 @@ class Server:
         if scale != 1:
             self.purchase_price = int(self.purchase_price)
             self.average_maintenance_fee = int(self.average_maintenance_fee)
+            self.capacity = int(self.capacity * (1 - 0.072604916987))
         return self
 
 

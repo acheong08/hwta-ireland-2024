@@ -41,8 +41,8 @@ def get_solution(f: str = "output/1741.json"):
 
 
 if __name__ == "__main__":
-    solutions = get_solution()
+    solutions = get_solution("output/8761.json")
     for entry in solutions:
         print(
-            f"{entry.timestep} {entry.datacenter_id} {entry.server_generation} {entry.amount}"
+            f"{entry.timestep} {entry.datacenter_id} {entry.server_generation} {entry.action} {entry.amount}"
         )
