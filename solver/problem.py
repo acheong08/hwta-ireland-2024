@@ -1,132 +1,111 @@
-import numpy as np
 from pymoo.core.problem import Problem
-from pymoo.algorithms.moo.nsga2 import NSGA2
 
-import os
-import sys
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
-from constants import get_selling_prices
-
-from helper import mapSellingPriceToVector
+import numpy as np
 
 
-class ElementWiseProblem(Problem):
-
-    def __init__(self, constant_vectors, weight_vectors, n_days):
-        # Define the search space: even integers from 2 to 55845
-        self.options = np.arange(2, 55846, 2)
+class DailyElementWiseProblem(Problem):
+    def __init__(self, 
+                    demand_vector, 
+                    selling_price, 
+                    server_tracker, 
+                    current_day, 
+                    purchase_price, 
+                    maintenance_cost):
         
-        # We have 21 variables per day
-        n_var_per_day = 21
-        n_var = n_var_per_day * n_days
-        
-        # Lower and upper bounds are indices of our options array
-        xl = np.zeros(n_var, dtype=int)
-        xu = np.full(n_var, len(self.options) - 1, dtype=int)
+        offset = np.sum(server_tracker.x)
+        self.options = np.arange(-offset, 55846-offset, 2)
+        n_var = 21
 
-        # Store the constant vectors and weight vectors for each day
-        self.constant_vectors = np.array(constant_vectors)  # Shape: (n_days, 21)
-        self.weight_vectors = np.array(weight_vectors)  # Shape: (n_days, 21)
-        self.n_days = n_days
+        boundaries = server_tracker.define_restrictions(np.zeros(21));
+        xl = np.array(boundaries[0], dtype=int)
+        xu = np.array(boundaries[1], dtype=int)
 
-        # Define the group sums
+        self.demand_vector = np.array(demand_vector)
+        self.selling_price = np.array(selling_price)
+        self.server_tracker = server_tracker
+        self.current_day = current_day
+        self.purchase_price = purchase_price
+        self.maintenance_cost = maintenance_cost
         self.group_sums = [25245, 15300, 15300]
 
-        super().__init__(n_var=n_var, n_obj=1, n_ieq_constr=n_days * 3, xl=xl, xu=xu, type_var=int)
+        super().__init__(n_var=n_var, n_obj=3, n_ieq_constr=3, xl=xl, xu=xu, type_var=int)
+
+    def alpha(self, days):
+        # Identity function for now
+        return days
+    
+    def cost_function(self, x_i):
+        # logic: consider our argument and then consider all other servers then sum. 
+        # essentially, we abstract the sum as cost(x_i) + CONSTANT where CONSTANT is the price of all previous
+        # servers
+        total_cost = 0
+
+        new_fleet_size = list(map(lambda x, i: x // 2 if (i % 7) < 4 else x // 4, x_i, range(1, 22)))
+        for i in range(len(x_i)):
+            servers = self.server_tracker.servers[i]
+            for server in servers:
+                maintenance_cost = self.maintenance_cost[i]
+                days_active = self.current_day - server
+                alpha_value = self.alpha(days_active)
+                total_cost += maintenance_cost + alpha_value
+        
+        for i in range(len(new_fleet_size)):
+            maintenance_cost = self.maintenance_cost[i]
+            alpha_value = self.alpha(1)
+            purchase_price = self.purchase_price[i]
+            total_cost += maintenance_cost + alpha_value + total_cost
+        return total_cost
+    
+    def calculate_lifespan(self, x_i):
+        # logic: all all the days active and then divide the value by 96*the number of the fleet
+
+        total_value = 0
+        servers = self.server_tracker.servers
+        fleet_size = 0
+        new_fleet_size = list(map(lambda x, i: x // 2 if (i % 7) < 4 else x // 4, x_i, range(1, 22)))
+
+        for i in range(len(servers)):
+            temp = len(servers[i])
+            for j in range(temp):
+                total_value += self.current_day - servers[i][j]
+            fleet_size += temp
+        
+        total_value += sum(np.sum(row) for row in x_i)
+        
+        return (total_value // (fleet_size * 96)) if fleet_size > 0 else 1
+
 
     def _evaluate(self, x, out, *args, **kwargs):
-        # Reshape x to (n_populations, n_days, 21)
-        x_reshaped = x.reshape(x.shape[0], self.n_days, -1)
+        values = self.options[x.astype(int)]
+        current_values = np.array(self.server_tracker.x)
         
-        # Convert indices to actual values
-        values = self.options[x_reshaped.astype(int)]
+        # Ensure values and current_values have compatible shapes
+        if len(values.shape) == 2:
+            current_values = current_values.reshape(1, -1)
         
-        daily_objectives = np.zeros((x.shape[0], self.n_days))
-        daily_constraints = np.zeros((x.shape[0], self.n_days, 3))
-        
-        for day in range(self.n_days):
-            self.server_tracker.remove_old_servers(day)
-            current_values = self.server_tracker.get_current_values()
-            new_values = np.maximum(values[:, day, :] - current_values, 0)
-            total_values = current_values + new_values
-            
-            # Calculate the first part of the objective function
-            part1 = np.sum(np.minimum(total_values, self.constant_vectors[day]) * self.weight_vectors[day], axis=1)
-            
-            # Calculate the second part of the objective function
-            epsilon = 1e-10
-            part2 = np.sum(np.minimum(total_values, self.constant_vectors[day]) / (total_values + epsilon), axis=1)
-            
-            daily_objectives[:, day] = part1 * part2
-            
-            daily_constraints[:, day, 0] = np.abs(np.sum(total_values[:, :7], axis=1) - self.group_sums[0])
-            daily_constraints[:, day, 1] = np.abs(np.sum(total_values[:, 7:14], axis=1) - self.group_sums[1])
-            daily_constraints[:, day, 2] = np.abs(np.sum(total_values[:, 14:], axis=1) - self.group_sums[2])
-            
-            self.server_tracker.add_servers(day, new_values[0])  # Add servers for the first solution
-        
-        # Negate the sum of daily objectives for maximization
-        out["F"] = -np.sum(daily_objectives, axis=1).reshape(-1, 1)
-        
-        out["G"] = daily_constraints.reshape(x.shape[0], -1)
-        
-        # Find and print the argmin
-        feasible_mask = np.all(out["G"] <= 1e-6, axis=1)
-        if np.any(feasible_mask):
-            argmin = np.argmin(out["F"][feasible_mask])
-            print(f"Argmin (among feasible solutions): {argmin}")
-        else:
-            argmin = np.argmin(out["F"])
-            print(f"Argmin (no feasible solutions): {argmin}")
-        
+        new_values = np.maximum(values - current_values, 0)
+
+        total_values = current_values + new_values
+
+        # Calculate the objective function
+        part1 = np.sum(np.minimum(total_values, self.demand_vector) * self.selling_price, axis=1)
+        epsilon = 1e-10
+        part2 = np.sum(np.minimum(total_values, self.demand_vector) / (total_values + epsilon), axis=1)
+
+        cost = np.array([self.cost_function(x_i) for x_i in x])
+
+        lifespan = np.array([self.calculate_lifespan(x_i) for x_i in x])
+
+        out["F"] = np.column_stack((-(part1 * part2).reshape(-1, 1), cost, lifespan)) 
+
+        # Inequality constraints: group sums should be less than or equal to the specified values
+        out["G"] = np.column_stack([
+            np.sum(total_values[:, :7], axis=1) - self.group_sums[0],
+            np.sum(total_values[:, 7:14], axis=1) - self.group_sums[1],
+            np.sum(total_values[:, 14:], axis=1) - self.group_sums[2]
+        ])
+
+        out["new_values"] = new_values
+        out["total_values"] = total_values
+
         return out
-    
-
-def main():
-    # Test the _evaluate method
-    n_days = 168
-    constant_vectors = np.array([np.random.randint(2, 25001, size=21) for _ in range(n_days)])
-    constant_vectors = constant_vectors - constant_vectors % 2  # Ensure even numbers
-    constant_vectors = constant_vectors * 25000 // np.sum(constant_vectors, axis=1, keepdims=True)  # Normalize to sum to 25000
-
-    weight_vectors = mapSellingPriceToVector(get_selling_prices())
-
-    problem = ElementWiseProblem(constant_vectors, weight_vectors, n_days)
-
-    # Create a sample input (indices, not actual values)
-    x = np.random.randint(0, len(problem.options), size=(10, 21 * n_days))
-
-    # Create an output dictionary
-    out = {}
-
-    # Call the _evaluate method
-    result = problem._evaluate(x, out)
-
-    print("Constant vectors shape:", constant_vectors.shape)
-    print("Weight vectors shape:", weight_vectors.shape)
-    print("Input x shape:", x.shape)
-    print("Normalized values shape:", result["values"].shape)
-    print("Output F (sum of min(x_i, c_i) * w_i over all days):", result["F"].flatten())
-    print("Output G (constraint violation for each day):", result["G"])
-
-    # Get the argmin (index of the minimum sum)
-    argmin = np.argmin(result["F"])
-    print("\nArgmin (index of minimum sum):", argmin)
-    print("Best solution (values):")
-    print(result["values"][argmin])
-    print("Group sums for best solution:")
-    for day in range(n_days):
-        print(f"Day {day + 1}:")
-        print("First 7:", np.sum(result["values"][argmin, day, :7]))
-        print("Middle 7:", np.sum(result["values"][argmin, day, 7:14]))
-        print("Last 7:", np.sum(result["values"][argmin, day, 14:]))
-    print("Sum of min(x_i, c_i) * w_i for best solution:", result["F"][argmin][0])
-    print("Constraint violations of best solution:", result["G"][argmin])
-
-if __name__ == "__main__":
-    main()
-
-
-
