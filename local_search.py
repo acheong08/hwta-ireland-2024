@@ -1,4 +1,3 @@
-import copy
 import json
 
 import numpy as np
@@ -26,29 +25,18 @@ for seed in [3329, 4201, 8761, 2311, 2663, 4507, 6247, 2281, 4363, 5693]:
         )
         return evaluator.get_score()
 
-    initial_solution = reverse.get_solution(f"merged/{seed}.json")
+    initial_solution = reverse.get_solution(f"output/{seed}.json")
 
     best_solution = initial_solution.copy()
     current_solution = initial_solution.copy()
     # Preprocessing: manually add dismisses to the end of the lifespan
-    for entry in initial_solution:
-        if entry.action != models.Action.BUY:
-            raise ValueError("Other actions not supported")
-        # Split the dismiss action into smaller chunks for more fine tuned control
-        NUM_CHUNKS = 10
-        chunk_size = entry.amount // NUM_CHUNKS
-        for _ in range(NUM_CHUNKS - 1):
-            new_entry = copy.deepcopy(entry)
-            new_entry.amount = chunk_size
-            new_entry.timestep = entry.timestep + 96
-            new_entry.action = models.Action.DISMISS
-            current_solution.append(new_entry)
-        # Put the remaining amount in the last chunk
-        new_entry = copy.deepcopy(entry)
-        new_entry.amount = entry.amount - (NUM_CHUNKS - 1) * chunk_size - 1
-        new_entry.timestep = entry.timestep + 96
-        new_entry.action = models.Action.DISMISS
-        current_solution.append(new_entry)
+    # for entry in initial_solution:
+    #     if entry.action != models.Action.BUY:
+    #         raise ValueError("Other actions not supported")
+    #     entry = copy.deepcopy(entry)
+    #     entry.timestep = entry.timestep + 96
+    #     entry.action = models.Action.DISMISS
+    #     current_solution.append(entry)
     current_score = get_score(current_solution, seed)
     print("Initial score:", current_score)
     improved = True
@@ -60,7 +48,7 @@ for seed in [3329, 4201, 8761, 2311, 2663, 4507, 6247, 2281, 4363, 5693]:
             improved = True
             while improved:
                 improved = False
-                entry.timestep -= 1
+                entry.timestep += 1
                 new_score = get_score(current_solution, seed)
                 if new_score >= current_score:
                     print("New score:", current_score)
@@ -71,9 +59,22 @@ for seed in [3329, 4201, 8761, 2311, 2663, 4507, 6247, 2281, 4363, 5693]:
                         generate.generate(best_solution, servers),
                         open(f"local/{seed}.json", "w"),
                     )
-                else:
-                    # Restore the previous state
-                    entry.timestep += 1
+                    continue
+                # Reduce
+                entry.timestep -= 2
+                new_score = get_score(current_solution, seed)
+                if new_score >= current_score:
+                    print("New score:", current_score)
+                    current_score = new_score
+                    improved = True
+                    best_solution = current_solution.copy()
+                    json.dump(
+                        generate.generate(best_solution, servers),
+                        open(f"local/{seed}.json", "w"),
+                    )
+                    continue
+                # Restore to original
+                entry.timestep += 1
 
     except KeyboardInterrupt:
         json.dump(

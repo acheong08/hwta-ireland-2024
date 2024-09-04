@@ -5,6 +5,7 @@ import numpy as np
 from scipy.stats import truncweibull_min  # type: ignore[import]
 
 import constants
+from eval_utils import demand_to_map, sp_to_map
 from reverse import get_solution
 from solver import models
 
@@ -45,10 +46,16 @@ class Evaluator:
     def __init__(
         self,
         actions: list[models.SolutionEntry],
-        demand: list[models.Demand],
-        servers: list[models.Server],
-        datacenters: list[models.Datacenter],
-        selling_prices: list[models.SellingPrices],
+        demand: (
+            list[models.Demand]
+            | dict[int, dict[models.ServerGeneration, dict[models.Sensitivity, int]]]
+        ),
+        servers: list[models.Server] | dict[models.ServerGeneration, models.Server],
+        datacenters: list[models.Datacenter] | dict[str, models.Datacenter],
+        selling_prices: (
+            list[models.SellingPrices]
+            | dict[models.ServerGeneration, dict[models.Sensitivity, int]]
+        ),
         verbose: bool = False,
         plot_generation: models.ServerGeneration | None = None,
     ) -> None:
@@ -58,29 +65,22 @@ class Evaluator:
             if self.actions.get(action.timestep) is None:
                 self.actions[action.timestep] = []
             self.actions[action.timestep].append(action)
-        self.demand: dict[
-            int, dict[models.ServerGeneration, dict[models.Sensitivity, int]]
-        ] = {}
-        for d in demand:
-            if d.time_step not in self.demand:
-                self.demand[d.time_step] = {}
-            if d.server_generation not in self.demand[d.time_step]:
-                self.demand[d.time_step][d.server_generation] = {}
-            for sen in models.Sensitivity:
-                self.demand[d.time_step][d.server_generation][sen] = d.get_latency(sen)
-        self.server_map = {server.server_generation: server for server in servers}
-        self.datacenter_map = {dc.datacenter_id: dc for dc in datacenters}
-        self.selling_prices: dict[
-            models.ServerGeneration, dict[models.Sensitivity, int]
-        ] = {}
-        for sp in selling_prices:
-            if sp.server_generation not in self.selling_prices:
-                self.selling_prices[sp.server_generation] = {}
-            if sp.latency_sensitivity not in self.selling_prices[sp.server_generation]:
-                self.selling_prices[sp.server_generation][sp.latency_sensitivity] = 0
-            self.selling_prices[sp.server_generation][
-                sp.latency_sensitivity
-            ] = sp.selling_price
+        if isinstance(demand, list):
+            self.demand = demand_to_map(demand)
+        else:
+            self.demand = demand
+        if isinstance(servers, list):
+            self.server_map = {server.server_generation: server for server in servers}
+        else:
+            self.server_map = servers
+        if isinstance(datacenters, list):
+            self.datacenter_map = {dc.datacenter_id: dc for dc in datacenters}
+        else:
+            self.datacenter_map = datacenters
+        if isinstance(selling_prices, list):
+            self.selling_prices = sp_to_map(selling_prices)
+        else:
+            self.selling_prices = selling_prices
         self.verbose = verbose
         self.demand_history: list[dict[models.Sensitivity, int]] = [
             {sen: 0 for sen in models.Sensitivity} for _ in range(169)
