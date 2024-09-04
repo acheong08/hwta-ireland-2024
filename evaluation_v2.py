@@ -293,12 +293,12 @@ class Evaluator:
                     datacenter
                 ]
             )
-            self.capacity_history[ts][sen] = total_capacity
+            self.capacity_history[ts][sen] = total_capacity // 100
             demand = (
                 self.get_demand(ts, self.plot_generation, sen)
                 // self.server_map[self.plot_generation].capacity
             )
-            self.demand_history[ts][sen] = demand
+            self.demand_history[ts][sen] = demand // 100
 
     def get_score(self):
         try:

@@ -9,7 +9,7 @@ import reverse
 from solver import models
 
 seed = 8761
-solution = reverse.get_solution("output_old/8761.json")
+solution = reverse.get_solution("output/8761.json")
 
 np.random.seed(seed)
 evaluator = evaluation_v2.Evaluator(
