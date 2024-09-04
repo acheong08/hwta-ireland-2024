@@ -3,6 +3,7 @@ import itertools
 from typing import Any, override
 
 import numpy as np
+from numpy.typing import NDArray
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.problem import Problem
 from pymoo.optimize import minimize  # pyright: ignore[reportUnknownVariableType]
@@ -48,12 +49,14 @@ class MyProblem(Problem):
             )
 
         super().__init__(
-            n_var,
+            n_var=n_var,
+            n_obj=1,
+            n_constr=0,
             xl=np.zeros(n_var),
             xu=upper_bounds,
         )
 
-    def decode_actions(self, x: np.ndarray):
+    def decode_actions(self, x: NDArray[np.float64]) -> list[SolutionEntry]:
         actions: list[SolutionEntry] = []
         for n, comb in enumerate(
             itertools.product(
@@ -64,7 +67,7 @@ class MyProblem(Problem):
                 continue
             actions.append(
                 SolutionEntry(
-                    comb[0],
+                    comb[0] + 1,
                     comb[1],
                     comb[2],
                     comb[3],
@@ -74,27 +77,34 @@ class MyProblem(Problem):
         return actions
 
     @override
-    def _evaluate(self, x: np.ndarray, out: dict[str, np.ndarray]):
-        actions = self.decode_actions(x)
-        evaluator = Evaluator(
-            actions, self.demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
-        )
-        out["F"] = np.array([-evaluator.get_score()])
+    def _evaluate(self, x: NDArray[np.float64], out: dict[str, NDArray[np.float64]]):
+        n_individuals = x.shape[0]
+        f = np.zeros((n_individuals, 1))  # Shape: (n_individuals, n_objectives)
+
+        for i in range(n_individuals):
+            actions = self.decode_actions(x[i])
+            evaluator = Evaluator(
+                actions, self.demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
+            )
+            f[i, 0] = -evaluator.get_score()  # Negative because we're minimizing
+
+        out["F"] = f
 
 
 if __name__ == "__main__":
     algorithm = NSGA2(
+        pop_size=100,
         eliminate_duplicates=True,
     )
     np.random.seed(2281)
     demand = get_demand()
     problem = MyProblem(demand)
-    res: None | Any = minimize(problem, algorithm)  # type: ignore[reportUnknownVariableType]
+    res: None | Any = minimize(problem, algorithm, termination=("n_gen", 100))  # type: ignore[reportUnknownVariableType]
     if res is None:
         print("No solution found")
         exit()
-    best_solution = problem.decode_actions(res.X)
+    best_solution = problem.decode_actions(res.X[0])  # type: ignore[reportUnknownArgumentType]
     best_score = Evaluator(
         best_solution, demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
     ).get_score()
-    print(best_score)
+    print(f"Best score: {best_score}")
