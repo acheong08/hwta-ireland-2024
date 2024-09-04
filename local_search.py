@@ -13,7 +13,7 @@ servers = constants.get_servers()
 datacenters = constants.get_datacenters()
 selling_prices = constants.get_selling_prices()
 
-for seed in [1061, 1741, 2237, 2543, 3163, 4799, 6053, 8237, 8501, 8933]:
+for seed in [3329, 4201, 8761, 2311, 2663, 4507, 6247, 2281, 4363, 5693]:
     np.random.seed(seed)
     demand = constants.get_demand()
 
@@ -26,7 +26,7 @@ for seed in [1061, 1741, 2237, 2543, 3163, 4799, 6053, 8237, 8501, 8933]:
         )
         return evaluator.get_score()
 
-    initial_solution = reverse.get_solution(f"output/{seed}.json")
+    initial_solution = reverse.get_solution(f"merged/{seed}.json")
 
     best_solution = initial_solution.copy()
     current_solution = initial_solution.copy()
@@ -34,10 +34,21 @@ for seed in [1061, 1741, 2237, 2543, 3163, 4799, 6053, 8237, 8501, 8933]:
     for entry in initial_solution:
         if entry.action != models.Action.BUY:
             raise ValueError("Other actions not supported")
-        entry = copy.deepcopy(entry)
-        entry.timestep = entry.timestep + 96
-        entry.action = models.Action.DISMISS
-        current_solution.append(entry)
+        # Split the dismiss action into smaller chunks for more fine tuned control
+        NUM_CHUNKS = 10
+        chunk_size = entry.amount // NUM_CHUNKS
+        for _ in range(NUM_CHUNKS - 1):
+            new_entry = copy.deepcopy(entry)
+            new_entry.amount = chunk_size
+            new_entry.timestep = entry.timestep + 96
+            new_entry.action = models.Action.DISMISS
+            current_solution.append(new_entry)
+        # Put the remaining amount in the last chunk
+        new_entry = copy.deepcopy(entry)
+        new_entry.amount = entry.amount - (NUM_CHUNKS - 1) * chunk_size - 1
+        new_entry.timestep = entry.timestep + 96
+        new_entry.action = models.Action.DISMISS
+        current_solution.append(new_entry)
     current_score = get_score(current_solution, seed)
     print("Initial score:", current_score)
     improved = True
