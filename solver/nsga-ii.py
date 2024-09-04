@@ -51,6 +51,7 @@ def optimize_sequence(demand_vectors, selling_prices, n_days, purchase_price, ma
 
         daily_results.append(best_total_values)
         server_tracker.update_all_servers(daily_results[day-1], best_new_values, day)
+        print(server_tracker.servers)
         
 
     return daily_results
