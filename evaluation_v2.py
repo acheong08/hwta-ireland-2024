@@ -5,9 +5,9 @@ import numpy as np
 from scipy.stats import truncweibull_min  # type: ignore[import]
 
 import constants
-from eval_utils import demand_to_map, sp_to_map
 from reverse import get_solution
 from solver import models
+from utils import demand_to_map, sp_to_map
 
 
 def weibullshit(capacity: int):
