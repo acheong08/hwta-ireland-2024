@@ -8,8 +8,8 @@ import plot
 import reverse
 from solver import models
 
-seed = 8761
-solution = reverse.get_solution("output/8761.json")
+seed = 2281
+solution = reverse.get_solution("output/2281.json")
 
 np.random.seed(seed)
 evaluator = evaluation_v2.Evaluator(
