@@ -324,9 +324,10 @@ class Evaluator:
                         f"{ts}: O:{round(total_score, 2)} U:{round(utilization,2)} L:{round(life_span, 2)} P:{round(profit, 2)}"
                     )
                 self.save_history(ts)
+            print(total_score)
             return total_score
         except Exception:
-            return -100000000000000000000
+            return -1
 
 
 if __name__ == "__main__":

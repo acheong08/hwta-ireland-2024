@@ -110,7 +110,7 @@ class Demand:
 
 class Action(Enum):
     BUY = "buy"
-    DISMISS = "dismiss"
+    # DISMISS = "dismiss"
     # MOVE = "move"
 
 
