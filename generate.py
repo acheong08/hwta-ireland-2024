@@ -1,10 +1,8 @@
 from constants import get_servers
-from solver.debuggy import debug_on  # type: ignore[import]
 from solver.models import Action, Server, ServerGeneration, SolutionEntry
 from utils import save_solution  # type: ignore[import]
 
 
-@debug_on(Exception)
 def generate(
     entries: list[SolutionEntry], servers: list[Server]
 ) -> list[dict[str, str | int]]:

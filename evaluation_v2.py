@@ -325,9 +325,8 @@ class Evaluator:
                     )
                 self.save_history(ts)
             return total_score
-        except Exception as e:
-            print(e)
-            return 0
+        except Exception:
+            return -100000000000000000000
 
 
 if __name__ == "__main__":

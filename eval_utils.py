@@ -8,7 +8,6 @@ import constants
 from evaluation import evaluation_function
 from evaluation_v2 import Evaluator
 from reverse import get_solution
-from solver import models
 from utils import load_problem_data, load_solution
 
 

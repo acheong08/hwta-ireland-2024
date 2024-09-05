@@ -27,8 +27,8 @@ for f in solutions:
     # ./<dir>/<seed>.json
 
     # EVALUATE THE SOLUTION
-    score = get_score(f, seed, rerun=False)
-    score2 = get_score(f"./{sys.argv[2]}/{seed}.json", seed, rerun=False)
+    score = get_score(f, seed, rerun=False, fast=False)
+    score2 = get_score(f"./{sys.argv[2]}/{seed}.json", seed, rerun=False, fast=False)
 
     print(f"{score} vs {score2}")
     if score > score2:

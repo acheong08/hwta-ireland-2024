@@ -4,7 +4,7 @@ from typing import Any, override
 
 import numpy as np
 from numpy.typing import NDArray
-from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.algorithms.moo.nsga2 import NSGA2, PM, SBX
 from pymoo.core.problem import Problem
 from pymoo.operators.sampling.rnd import IntegerRandomSampling
 from pymoo.optimize import minimize  # pyright: ignore[reportUnknownVariableType]
@@ -27,6 +27,9 @@ DATACENTER_MAP = {dc.datacenter_id: dc for dc in DATACENTERS}
 SELLING_PRICES_MAP = sp_to_map(SELLING_PRICES)
 
 
+N_VAR = MAX_TS * len(SERVERS) * len(ServerGeneration) * len(Action)
+
+
 class MyProblem(Problem):
 
     def __init__(
@@ -34,9 +37,8 @@ class MyProblem(Problem):
         demand: list[Demand],
     ):
         self.demand = demand_to_map(demand)
-        n_var = MAX_TS * len(SERVERS) * len(ServerGeneration) * len(Action)
 
-        upper_bounds = np.array([1] * n_var)
+        upper_bounds = np.ones(N_VAR)
         for n, comb in enumerate(
             itertools.product(
                 range(MIN_TS, MAX_TS), DATACENTER_MAP, ServerGeneration, Action
@@ -45,15 +47,22 @@ class MyProblem(Problem):
             if comb[0] == 0 and comb[3] != Action.BUY:
                 upper_bounds[n] = 0
                 continue
+            # Check release time
+            if (
+                comb[0] < SERVER_MAP[comb[2]].release_time[0]
+                or comb[0] > SERVER_MAP[comb[2]].release_time[1]
+            ):
+                upper_bounds[n] = 0
+                continue
             upper_bounds[n] = (
-                SERVER_MAP[comb[2]].slots_size // DATACENTER_MAP[comb[1]].slots_capacity
+                DATACENTER_MAP[comb[1]].slots_capacity // SERVER_MAP[comb[2]].slots_size
             )
 
         super().__init__(
-            n_var=n_var,
+            n_var=N_VAR,
             n_obj=1,
             n_constr=0,
-            xl=np.zeros(n_var),
+            xl=np.zeros(N_VAR),
             xu=upper_bounds,
             vtype=int,
         )
@@ -65,6 +74,8 @@ class MyProblem(Problem):
                 range(MIN_TS, MAX_TS), DATACENTER_MAP, ServerGeneration, Action
             )
         ):
+            if x[n] == 0.0:
+                continue
             amount = int(x[n])
             if amount == 0:
                 continue
@@ -96,7 +107,11 @@ class MyProblem(Problem):
 
 if __name__ == "__main__":
     algorithm = NSGA2(
-        pop_size=100, eliminate_duplicates=True, sampling=IntegerRandomSampling()
+        pop_size=100,
+        eliminate_duplicates=True,
+        sampling=IntegerRandomSampling(),
+        crossover=SBX(prob=0.9, eta=15, vtype=int),
+        mutation=PM(prob=1.0 / N_VAR, eta=20, vtype=int),
     )
     np.random.seed(2281)
     demand = get_demand()
