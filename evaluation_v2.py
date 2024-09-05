@@ -300,7 +300,7 @@ class Evaluator:
             )
             self.demand_history[ts][sen] = demand // 100
 
-    def get_score(self):
+    def get_score(self) -> float:
         try:
             total_score = 0
             for ts in range(1, 169):

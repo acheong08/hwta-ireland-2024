@@ -6,6 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.problem import Problem
+from pymoo.operators.sampling.rnd import IntegerRandomSampling
 from pymoo.optimize import minimize  # pyright: ignore[reportUnknownVariableType]
 
 from constants import get_datacenters, get_demand, get_selling_prices, get_servers
@@ -54,16 +55,18 @@ class MyProblem(Problem):
             n_constr=0,
             xl=np.zeros(n_var),
             xu=upper_bounds,
+            vtype=int,
         )
 
-    def decode_actions(self, x: NDArray[np.float64]) -> list[SolutionEntry]:
+    def decode_actions(self, x: NDArray[np.int32]) -> list[SolutionEntry]:
         actions: list[SolutionEntry] = []
         for n, comb in enumerate(
             itertools.product(
                 range(MIN_TS, MAX_TS), DATACENTER_MAP, ServerGeneration, Action
             )
         ):
-            if x[n] == 0:
+            amount = int(x[n])
+            if amount == 0:
                 continue
             actions.append(
                 SolutionEntry(
@@ -71,14 +74,14 @@ class MyProblem(Problem):
                     comb[1],
                     comb[2],
                     comb[3],
-                    int(x[n]),
+                    amount,
                 )
             )
         return actions
 
     @override
-    def _evaluate(self, x: NDArray[np.float64], out: dict[str, NDArray[np.float64]]):
-        n_individuals = x.shape[0]
+    def _evaluate(self, x: NDArray[np.float64], out: dict[str, Any]):
+        n_individuals = int(x.shape[0])
         f = np.zeros((n_individuals, 1))  # Shape: (n_individuals, n_objectives)
 
         for i in range(n_individuals):
@@ -93,8 +96,7 @@ class MyProblem(Problem):
 
 if __name__ == "__main__":
     algorithm = NSGA2(
-        pop_size=100,
-        eliminate_duplicates=True,
+        pop_size=100, eliminate_duplicates=True, sampling=IntegerRandomSampling()
     )
     np.random.seed(2281)
     demand = get_demand()
