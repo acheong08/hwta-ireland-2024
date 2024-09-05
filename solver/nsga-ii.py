@@ -9,8 +9,8 @@ from pymoo.operators.mutation.pm import PM
 from server import ServerTracker
 from problem import DailyElementWiseProblem
 
-def optimize_sequence(demand_vectors, selling_prices, n_days, purchase_price, maintenance_cost):
-    server_tracker = ServerTracker(21)
+def optimize_sequence(demand_vectors, selling_prices, n_days, purchase_price, maintenance_cost, energy_cost):
+    server_tracker = ServerTracker()
     daily_results = []
 
     for day in range(n_days):
@@ -20,7 +20,8 @@ def optimize_sequence(demand_vectors, selling_prices, n_days, purchase_price, ma
                                             server_tracker, 
                                             day, 
                                             purchase_price, 
-                                            maintenance_cost)
+                                            maintenance_cost,
+                                            energy_cost)
 
         algorithm = NSGA2(
             pop_size=100,
@@ -51,7 +52,8 @@ def optimize_sequence(demand_vectors, selling_prices, n_days, purchase_price, ma
 
         daily_results.append(best_total_values)
         server_tracker.update_all_servers(daily_results[day-1], best_new_values, day)
-        print(server_tracker.servers)
+        for i in range(day):
+            print("Servers:", server_tracker.servers[i])
         
 
     return daily_results
@@ -62,9 +64,10 @@ demand_vectors = np.random.randint(2, 55846, size=(n_days, 21))
 selling_prices = np.ones((n_days, 21))  # All ones for now, but can be modified
 purchase_prices = np.array([15000, 16000, 19500, 22000, 120000, 140000, 160000] * 3)
 maintenance_cost = np.array([288, 308, 375, 423, 2310, 2695, 3080] * 3)
+energy_cost = np.array([400, 460, 800, 920, 3000, 3000, 3200] * 3)
 
 
-results = optimize_sequence(demand_vectors, selling_prices, n_days, purchase_prices, maintenance_cost)
+results = optimize_sequence(demand_vectors, selling_prices, n_days, purchase_prices, maintenance_cost, energy_cost)
 
 for day, result in enumerate(results):
     if day % 10 == 0:  # Print every 10th day to reduce output

@@ -10,9 +10,10 @@ class DailyElementWiseProblem(Problem):
                     server_tracker, 
                     current_day, 
                     purchase_price, 
-                    maintenance_cost):
+                    maintenance_cost,
+                    energy_cost):
         
-        offset = np.sum(server_tracker.x)
+        offset = np.sum(server_tracker.map_servers_to_search_space())
         self.options = np.arange(-offset, 55846-offset, 2)
         n_var = 21
 
@@ -26,6 +27,7 @@ class DailyElementWiseProblem(Problem):
         self.current_day = current_day
         self.purchase_price = purchase_price
         self.maintenance_cost = maintenance_cost
+        self.energy_costs = energy_cost
         self.group_sums = [25245, 15300, 15300]
 
         super().__init__(n_var=n_var, n_obj=3, n_ieq_constr=3, xl=xl, xu=xu, type_var=int)
@@ -39,36 +41,20 @@ class DailyElementWiseProblem(Problem):
         # essentially, we abstract the sum as cost(x_i) + CONSTANT where CONSTANT is the price of all previous
         # servers
         total_cost = 0
+        for i in range(self.current_day):
+            for j in range(21):
+                sb = self.server_tracker.servers[i][j] # sb stands for server_batch
+                total_cost += self.maintenance_cost[j]*sb + sb*self.alpha(self.current_day - i + 1)
 
-        new_fleet_size = list(map(lambda x, i: x // 2 if (i % 7) < 4 else x // 4, x_i, range(1, 22)))
-        for i in range(len(x_i)):
-            servers = self.server_tracker.servers[i]
-            for server in servers:
-                maintenance_cost = self.maintenance_cost[i]
-                days_active = self.current_day - server
-                alpha_value = self.alpha(days_active)
-                total_cost += maintenance_cost + alpha_value
-        
-        for i in range(len(new_fleet_size)):
-            maintenance_cost = self.maintenance_cost[i]
-            alpha_value = self.alpha(1)
-            purchase_price = self.purchase_price[i]
-            total_cost += maintenance_cost + alpha_value + total_cost
         return total_cost
     
     def calculate_lifespan(self, x_i):
-        # logic: all all the days active and then divide the value by 96*the number of the fleet
+        # logic: all the days active and then divide the value by 96*the number of the fleet
 
         total_value = 0
-        servers = self.server_tracker.servers
-        fleet_size = 0
-        new_fleet_size = list(map(lambda x, i: x // 2 if (i % 7) < 4 else x // 4, x_i, range(1, 22)))
-
-        for i in range(len(servers)):
-            temp = len(servers[i])
-            for j in range(temp):
-                total_value += self.current_day - servers[i][j]
-            fleet_size += temp
+        fleet_size = np.sum(self.server_tracker.map_servers_to_search_space())
+        for i in range(self.current_day):
+            total_value += (i+1)*np.sum(self.server_tracker.servers[i])
         
         total_value += sum(np.sum(row) for row in x_i)
         
@@ -77,7 +63,7 @@ class DailyElementWiseProblem(Problem):
 
     def _evaluate(self, x, out, *args, **kwargs):
         values = self.options[x.astype(int)]
-        current_values = np.array(self.server_tracker.x)
+        current_values = np.array(self.server_tracker.map_servers_to_search_space())
         
         # Ensure values and current_values have compatible shapes
         if len(values.shape) == 2:

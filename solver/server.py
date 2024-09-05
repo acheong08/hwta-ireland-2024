@@ -1,47 +1,52 @@
 import numpy as np
-
+        
 class ServerTracker:
 
-    def __init__(self, types) -> None:
-        self.types = types
-        self.servers =[[] for _ in range(types)]
-        self.x = [0 for _ in range(21)]
+    def __init__(self) -> None:
+        self.servers = [[0 for _ in range(21)] for _ in range(168)]
 
-    def add_server(self, type, day):
-        self.servers[type].append(day)
-    
-    def update_all_servers(self, previous_day, current_day, day):
-        new_servers = np.array(current_day) - np.array(previous_day)
-        for i in range(len(new_servers)):
-            val = 2 if (i % 7 < 4) else 4
-            if new_servers[i] < 0:
-                for j in range(new_servers[i] // val):
-                    self.removeServer(i)
-            elif new_servers[i] > 0:
-                for j in range(new_servers[i] // val):
-                    self.add_server(i, day)
-        
+    def addServers(self, new_servers, day):
+        for i in range(21):
+            if new_servers[i] > 0:
+                self.servers[day-1][i] += new_servers[i]
+            
     
     def remove_old_servers(self, current_day):
-        for i in range(len(self.servers)):
-            for j in range(len(self.servers[i])):
-                if (current_day - self.servers[i][j] >= 96):
-                    self.servers.remove(self.servers[i][j])
-
+        days_to_remove = current_day - 96
+        if (days_to_remove < 0):
+            pass
+        else:
+            for i in range(days_to_remove):
+                self.servers[i] = [0 for _ in range(21)]
+            
+    def dismiss_servers(self, new_solution):
+        # Ensure input sizes are correct
+        if len(new_solution) != 21:
+            raise ValueError("Input array A must be of length 21")
     
-    def removeServer(self, type):
-        self.server[type].remove(min(self.server[type]))
-        
+        # Iterate through each element in A
+        for i, value in enumerate(new_solution):
+            if value < 0:
+                abs_value = abs(value)
+                # Apply the subtraction to each element in the i-th sublist of server_array
+                for j in range(168):
+                    if abs_value <= 0:
+                        break  # No more subtraction needed
+                    if self.servers[i][j] > 0:
+                        if self.servers[i][j] >= abs_value:
+                            self.servers[i][j] -= abs_value
+                            break  # We've fully applied the subtraction
+                        else:
+                            abs_value -= self.servers[i][j]
+                            self.servers[i][j] = 0
+    
+    def update_all_servers(self, previous_results, new_results, day):
+        self.addServers(new_results, day)
+        self.dismiss_servers(new_results)
+        self.remove_old_servers(current_day=day)        
     
     def map_servers_to_search_space(self):
-        x = [0 for _ in range(self.types)]
-        for i in range(len(self.servers)):  
-            if i % 7 > 3:
-                total_sum = np.sum(self.servers[i]) * 4
-            else:
-                total_sum = np.sum(self.servers[i]) * 2
-            x[i] = total_sum
-        
+        x = np.sum(self.servers, axis=0)
         return x
     
     def define_restrictions(self, x):
@@ -57,8 +62,6 @@ class ServerTracker:
         # restrictions define xl and xu for the next iteration
 
         return restrictions
-        
-
         
             
 
