@@ -1,5 +1,6 @@
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false, reportMissingTypeArgument=false, reportUnknownParameterType=false, reportAny=false, reportUnknownArgumentType=false
 import itertools
+import json
 from typing import Any, override
 
 import numpy as np
@@ -74,7 +75,7 @@ class MyProblem(Problem):
             if comb[3] == models.Action.MOVE:
                 # Must be after release time
                 if comb[0] > SERVER_MAP[comb[2]].release_time[0]:
-                    upper_bounds[n] = 1
+                    upper_bounds[n] = 0
                     upper_bounds[n + 1] = len(DATACENTER_MAP) - 1
                 n += n_increment
                 continue
@@ -92,46 +93,8 @@ class MyProblem(Problem):
             vtype=int,
         )
 
-    def decode_actions(self, x: NDArray[np.int64]) -> list[models.SolutionEntry]:
-        actions: list[models.SolutionEntry] = []
-        n = 0
-        for comb in itertools.product(
-            range(MIN_TS, MAX_TS + 1),
-            DATACENTER_MAP,
-            models.ServerGeneration,
-            models.Action,
-        ):
-            if x[n] == 0.0:
-                n += 1 if comb[3] != models.Action.MOVE else 2
-                continue
-            amount = int(x[n])
-            if comb[3] == models.Action.MOVE:
-                actions.append(
-                    models.SolutionEntry(
-                        comb[0] + 1,
-                        comb[1],
-                        comb[2],
-                        models.Action.MOVE,
-                        amount,
-                        target_datacenter=DATACENTERS[int(x[n + 1])].datacenter_id,
-                    )
-                )
-                n += 2
-                continue
-            actions.append(
-                models.SolutionEntry(
-                    comb[0] + 1,
-                    comb[1],
-                    comb[2],
-                    comb[3],
-                    amount,
-                )
-            )
-            n += 1
-        return actions
-
     def evaluate_individual(self, x: NDArray[np.int64]) -> tuple[float, float]:
-        actions = self.decode_actions(x)
+        actions = decode_actions(x)
         evaluator = Evaluator(
             actions, self.demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
         )
@@ -148,6 +111,45 @@ class MyProblem(Problem):
 
         out["F"] = np.array(f)
         out["G"] = np.array(g)
+
+
+def decode_actions(x: NDArray[np.int64]) -> list[models.SolutionEntry]:
+    actions: list[models.SolutionEntry] = []
+    n = 0
+    for comb in itertools.product(
+        range(MIN_TS, MAX_TS + 1),
+        DATACENTER_MAP,
+        models.ServerGeneration,
+        models.Action,
+    ):
+        if x[n] == 0.0:
+            n += 1 if comb[3] != models.Action.MOVE else 2
+            continue
+        amount = int(x[n])
+        if comb[3] == models.Action.MOVE:
+            actions.append(
+                models.SolutionEntry(
+                    comb[0] + 1,
+                    comb[1],
+                    comb[2],
+                    models.Action.MOVE,
+                    amount,
+                    target_datacenter=DATACENTERS[int(x[n + 1])].datacenter_id,
+                )
+            )
+            n += 2
+            continue
+        actions.append(
+            models.SolutionEntry(
+                comb[0] + 1,
+                comb[1],
+                comb[2],
+                comb[3],
+                amount,
+            )
+        )
+        n += 1
+    return actions
 
 
 def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
@@ -197,21 +199,35 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
 
 SEED = 2281
 
+
+def action_to_dict(a: list[models.SolutionEntry]):
+    b: list[dict[str, Any]] = []
+    for i in a:
+        b.append(i.to_dict())
+    return b
+
+
 if __name__ == "__main__":
 
-    initial_solution = actions_to_np(get_solution(f"merged/{SEED}.json"))
-    algorithm = PatternSearch(x0=initial_solution)
-    np.random.seed(2281)
-    demand = get_demand()
-    problem = MyProblem(demand)
-    termination = get_termination("time", 1)
-    res: None | Any = minimize(problem, algorithm, termination, verbose=True)  # type: ignore[reportUnknownVariableType]
-    if res is None or res.X is None:
-        print("No solution found")
-        exit()
-
-    best_solution = problem.decode_actions(res.X)
-    best_score = Evaluator(
-        best_solution, demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
-    ).get_score()
-    print(f"Best score: {best_score}")
+    initial_solution = get_solution(f"merged/{SEED}.json")
+    initial = json.dumps(action_to_dict(initial_solution))
+    # Reverse the process
+    np_solution = actions_to_np(initial_solution)
+    initial_solution = decode_actions(np_solution)
+    initial2 = json.dumps(action_to_dict(initial_solution))
+    print(initial == initial2)
+    # algorithm = PatternSearch(x0=initial_solution)
+    # np.random.seed(2281)
+    # demand = get_demand()
+    # problem = MyProblem(demand)
+    # termination = get_termination("time", 1)
+    # res: None | Any = minimize(problem, algorithm, termination, verbose=True)  # type: ignore[reportUnknownVariableType]
+    # if res is None or res.X is None:
+    #     print("No solution found")
+    #     exit()
+    #
+    # best_solution = decode_actions(res.X)
+    # best_score = Evaluator(
+    #     best_solution, demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
+    # ).get_score()
+    # print(f"Best score: {best_score}")
