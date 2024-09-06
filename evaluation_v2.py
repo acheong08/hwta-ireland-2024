@@ -82,8 +82,10 @@ class Evaluator:
             self.selling_prices = selling_prices
         self.verbose = verbose
         self.move_costs = 0
+        self.move_queue: list[models.SolutionEntry] = []
 
     def do_action(self, ts: int):
+        self.move_queue = []
         self.move_costs = 0
         action = self.actions.get(ts)
         if action is None:
@@ -96,7 +98,7 @@ class Evaluator:
             elif a.action == models.Action.DISMISS:
                 self.dismiss(a)
             elif a.action == models.Action.MOVE:
-                self.move(a)
+                self.move_queue.append(a)
 
     def dismiss(self, a: models.SolutionEntry):
         if self.operating_servers.get(a.server_generation) is None:
@@ -323,8 +325,10 @@ class Evaluator:
         try:
             total_score = 0
             for ts in range(1, 169):
-                self.expire_servers(ts)
                 self.do_action(ts)
+                self.expire_servers(ts)
+                for m in self.move_queue:
+                    self.move(m)
                 self.check_capacity()
                 cost = (
                     self.buying_cost(ts)
