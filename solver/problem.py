@@ -13,13 +13,16 @@ class DailyElementWiseProblem(Problem):
                     maintenance_cost,
                     energy_cost):
         
-        offset = np.sum(server_tracker.map_servers_to_search_space())
+        current_x = server_tracker.map_servers_to_search_space()
+        offset = np.sum(current_x)
         self.options = np.arange(-offset, 55846-offset, 2)
         n_var = 21
 
-        boundaries = server_tracker.define_restrictions(np.zeros(21));
+        boundaries = server_tracker.define_restrictions(current_x);
         xl = np.array(boundaries[0], dtype=int)
         xu = np.array(boundaries[1], dtype=int)
+        print(f"Lower Bound: {xl}")
+        print(f"Upper Bound: {xu}")
 
         self.demand_vector = np.array(demand_vector)
         self.selling_price = np.array(selling_price)

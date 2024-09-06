@@ -1,4 +1,4 @@
-from solver.models import (
+from models import (
     Action,
     Datacenter,
     Demand,
