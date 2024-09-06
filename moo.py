@@ -245,7 +245,7 @@ def action_to_dict(a: list[models.SolutionEntry]):
 def run_moo(seed: int):
 
     initial_solution = actions_to_np(get_solution(f"merged/{seed}.json"))
-    algorithm = PatternSearch(x0=initial_solution)
+    algorithm = PatternSearch(init_delta=0.35, x0=initial_solution)
     np.random.seed(seed)
     demand = get_demand()
 
@@ -265,7 +265,7 @@ def run_moo(seed: int):
 if __name__ == "__main__":
     seeds = [3329, 4201, 8761, 2311, 2663, 4507, 6247, 2281, 4363, 5693]
 
-    with multiprocessing.Pool() as pool:
+    with multiprocessing.Pool(10) as pool:
         results = pool.map(run_moo, seeds)
 
     for result in results:
