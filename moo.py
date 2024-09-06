@@ -49,7 +49,7 @@ def demand_for(
 class MyProblem(Problem):
 
     def __init__(
-        self, demand: list[models.Demand], seed: int, time_limit: int = 60 * 60 * 5
+        self, demand: list[models.Demand], seed: int, time_limit: int = 60 * 60 * 1
     ):
         self.demand = demand_to_map(demand)
         self.best_score = 0
