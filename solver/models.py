@@ -111,7 +111,7 @@ class Demand:
 class Action(Enum):
     BUY = "buy"
     DISMISS = "dismiss"
-    # MOVE = "move"
+    MOVE = "move"
 
 
 @dataclass

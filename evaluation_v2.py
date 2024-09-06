@@ -57,7 +57,6 @@ class Evaluator:
             | dict[models.ServerGeneration, dict[models.Sensitivity, int]]
         ),
         verbose: bool = False,
-        plot_generation: models.ServerGeneration | None = None,
     ) -> None:
         self.actions = {}
         self.operating_servers = {}
@@ -82,15 +81,10 @@ class Evaluator:
         else:
             self.selling_prices = selling_prices
         self.verbose = verbose
-        self.demand_history: list[dict[models.Sensitivity, int]] = [
-            {sen: 0 for sen in models.Sensitivity} for _ in range(169)
-        ]
-        self.capacity_history: list[dict[models.Sensitivity, int]] = [
-            {sen: 0 for sen in models.Sensitivity} for _ in range(169)
-        ]
-        self.plot_generation = plot_generation
+        self.move_costs = 0
 
     def do_action(self, ts: int):
+        self.move_costs = 0
         action = self.actions.get(ts)
         if action is None:
             return
@@ -101,6 +95,8 @@ class Evaluator:
                 self.buy(a)
             elif a.action == models.Action.DISMISS:
                 self.dismiss(a)
+            elif a.action == models.Action.MOVE:
+                self.move(a)
 
     def dismiss(self, a: models.SolutionEntry):
         if self.operating_servers.get(a.server_generation) is None:
@@ -139,6 +135,7 @@ class Evaluator:
         )
         if not servers:
             raise ValueError("No servers to move")
+        self.move_costs += a.amount * 1000
         remaning_amount = a.amount
         target = a.target_datacenter
         if self.operating_servers[a.server_generation].get(target) is None:
@@ -306,28 +303,6 @@ class Evaluator:
             if utilized > self.datacenter_map[datacenter].slots_capacity:
                 raise ValueError("Server capacity exceeded")
 
-    def save_history(self, ts: int):
-        if self.plot_generation is None:
-            return
-        for sen in models.Sensitivity:
-            total_capacity = sum(
-                (
-                    amount
-                    if self.datacenter_map[datacenter].latency_sensitivity == sen
-                    else 0
-                )
-                for datacenter in self.operating_servers.get(self.plot_generation, {})
-                for amount, _ in self.operating_servers[self.plot_generation][
-                    datacenter
-                ]
-            )
-            self.capacity_history[ts][sen] = total_capacity // 100
-            demand = (
-                self.get_demand(ts, self.plot_generation, sen)
-                // self.server_map[self.plot_generation].capacity
-            )
-            self.demand_history[ts][sen] = demand // 100
-
     def quick_validate(self):
         try:
             for ts in range(1, 169):
@@ -341,6 +316,9 @@ class Evaluator:
         self.operating_servers = {}
         return True
 
+    def moving_costs(self, ts: int):
+        return self.move_costs
+
     def get_score(self) -> float:
         try:
             total_score = 0
@@ -352,6 +330,7 @@ class Evaluator:
                     self.buying_cost(ts)
                     + self.energy_cost()
                     + self.maintenance_cost(ts)
+                    + self.moving_costs(ts)
                 )
                 revenue = self.revenue(ts)
                 profit = revenue - cost
@@ -364,10 +343,9 @@ class Evaluator:
                     print(
                         f"{ts}: O:{round(total_score, 2)} U:{round(utilization,2)} L:{round(life_span, 2)} P:{round(profit, 2)}"
                     )
-                self.save_history(ts)
-            print(total_score)
             return total_score
-        except Exception:
+        except Exception as e:
+            print(e)
             return -1
 
 

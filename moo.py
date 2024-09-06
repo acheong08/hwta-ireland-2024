@@ -30,7 +30,8 @@ DATACENTER_MAP = {dc.datacenter_id: dc for dc in DATACENTERS}
 SELLING_PRICES_MAP = sp_to_map(SELLING_PRICES)
 
 
-N_VAR = (MAX_TS - 1) * len(SERVERS) * len(models.ServerGeneration) * len(models.Action)
+# 1 for each combination but 2 for models.Action.MOVE
+N_VAR = (MAX_TS - 1) * len(SERVERS) * len(models.ServerGeneration) * (1 + 1 + 2)
 
 
 def demand_for(
@@ -50,28 +51,58 @@ class MyProblem(Problem):
     ):
         self.demand = demand_to_map(demand)
 
+        upper_bounds = np.zeros(N_VAR)
+        n = 0
+        for comb in itertools.product(
+            range(MIN_TS, MAX_TS + 1),
+            DATACENTER_MAP,
+            models.ServerGeneration,
+            models.Action,
+        ):
+            if comb[3] == models.Action.MOVE:
+                upper_bounds[n] = 1
+                upper_bounds[n + 1] = len(DATACENTER_MAP) - 1
+                n += 2
+                continue
+            upper_bounds[n] = (
+                DATACENTER_MAP[comb[1]].slots_capacity // SERVER_MAP[comb[2]].slots_size
+            )
+            n += 1
+
         super().__init__(
             n_var=N_VAR,
             n_obj=1,
             n_ieq_constr=1,
             xl=np.zeros(N_VAR),
+            xu=upper_bounds,
             vtype=int,
         )
 
     def decode_actions(self, x: NDArray[np.int64]) -> list[models.SolutionEntry]:
         actions: list[models.SolutionEntry] = []
-        for n, comb in enumerate(
-            itertools.product(
-                range(MIN_TS, MAX_TS + 1),
-                DATACENTER_MAP,
-                models.ServerGeneration,
-                models.Action,
-            )
+        n = 0
+        for comb in itertools.product(
+            range(MIN_TS, MAX_TS + 1),
+            DATACENTER_MAP,
+            models.ServerGeneration,
+            models.Action,
         ):
             if x[n] == 0.0:
+                n += 1 if comb[3] != models.Action.MOVE else 2
                 continue
             amount = int(x[n])
-            if amount == 0:
+            if comb[3] == models.Action.MOVE:
+                actions.append(
+                    models.SolutionEntry(
+                        comb[0] + 1,
+                        comb[1],
+                        comb[2],
+                        models.Action.MOVE,
+                        amount,
+                        target_datacenter=DATACENTERS[int(x[n + 1])].datacenter_id,
+                    )
+                )
+                n += 2
                 continue
             actions.append(
                 models.SolutionEntry(
@@ -82,6 +113,7 @@ class MyProblem(Problem):
                     amount,
                 )
             )
+            n += 1
         return actions
 
     def evaluate_individual(self, x: NDArray[np.int64]) -> tuple[float, float]:
@@ -98,15 +130,6 @@ class MyProblem(Problem):
 
     @override
     def _evaluate(self, x: NDArray[np.int64], out: dict[str, Any]):
-        # n_individuals = int(x.shape[0])
-        # print(n_individuals)
-        # with ProcessPoolExecutor() as executor:
-        #     results: list[tuple[float, float]] = list(
-        #         executor.map(self.evaluate_individual, x)
-        #     )
-        #
-        # f = np.array([r[0] for r in results]).reshape(n_individuals, 1)
-        # g = np.array([r[1] for r in results]).reshape(n_individuals, 1)
         f, g = self.evaluate_individual(x[0])
 
         out["F"] = np.array(f)
@@ -133,14 +156,16 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
             action.action
         ] = action.amount
     out = np.zeros(N_VAR, dtype=int)
-    for n, comb in enumerate(
-        itertools.product(
-            range(MIN_TS, MAX_TS + 1),
-            DATACENTER_MAP,
-            models.ServerGeneration,
-            models.Action,
-        )
+    n = 0
+    for comb in itertools.product(
+        range(MIN_TS, MAX_TS + 1),
+        DATACENTER_MAP,
+        models.ServerGeneration,
+        models.Action,
     ):
+        if comb[3] == models.Action.MOVE:
+            n += 2
+            continue
         if comb[0] not in action_map:
             continue
         if comb[2] not in action_map[comb[0]]:
@@ -149,7 +174,10 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
             continue
         if comb[3] not in action_map[comb[0]][comb[2]][comb[1]]:
             continue
+
         out[n] = action_map[comb[0]][comb[2]][comb[1]][comb[3]]
+        n += 1
+    print("Done decoding")
     return out
 
 
