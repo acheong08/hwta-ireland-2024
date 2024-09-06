@@ -300,6 +300,19 @@ class Evaluator:
             )
             self.demand_history[ts][sen] = demand // 100
 
+    def quick_validate(self):
+        try:
+            for ts in range(1, 169):
+                self.do_action(ts)
+                self.expire_servers(ts)
+                self.check_capacity()
+        except Exception:
+            return False
+
+        # Reset state
+        self.operating_servers = {}
+        return True
+
     def get_score(self) -> float:
         try:
             total_score = 0
