@@ -97,8 +97,6 @@ class Evaluator:
                 self.buy(a)
             elif a.action == models.Action.DISMISS:
                 self.dismiss(a)
-            elif a.action == models.Action.MOVE:
-                self.move_queue.append(a)
 
     def dismiss(self, a: models.SolutionEntry):
         if self.operating_servers.get(a.server_generation) is None:
@@ -130,35 +128,6 @@ class Evaluator:
         self.operating_servers[a.server_generation][a.datacenter_id].append(
             (a.amount, a.timestep)
         )
-
-    def move(self, a: models.SolutionEntry):
-        servers = self.operating_servers.get(a.server_generation, {}).get(
-            a.datacenter_id, []
-        )
-        if not servers:
-            raise ValueError("No servers to move")
-        self.move_costs += a.amount * 1000
-        remaning_amount = a.amount
-        target = a.datacenter_target
-        if self.operating_servers[a.server_generation].get(target) is None:
-            self.operating_servers[a.server_generation][target] = []
-        for i, server in enumerate(servers):
-            if remaning_amount == 0:
-                break
-            amount, bought_time = server
-            if amount > remaning_amount:
-                servers[i] = (amount - remaning_amount, bought_time)
-                remaning_amount = 0
-                # Put capacity in target datacenter
-                self.operating_servers[a.server_generation][target].append(
-                    (a.amount, bought_time)
-                )
-            else:
-                servers[i] = (0, bought_time)
-                remaning_amount -= amount
-                self.operating_servers[a.server_generation][target].append(
-                    (amount, bought_time)
-                )
 
     def expire_servers(self, ts: int):
         for generation, datacenters in self.operating_servers.items():
@@ -327,8 +296,6 @@ class Evaluator:
             for ts in range(1, 169):
                 self.do_action(ts)
                 self.expire_servers(ts)
-                for m in self.move_queue:
-                    self.move(m)
                 self.check_capacity()
                 cost = (
                     self.buying_cost(ts)

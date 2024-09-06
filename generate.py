@@ -10,97 +10,73 @@ def generate(
     solution: list[dict[str, str | int]] = []
     # datacenter_id -> server_generation -> list[server id]
     ids: dict[str, dict[ServerGeneration, list[dict[str, int]]]] = {}
-    counter = 0
+    entry_map = dict[int, dict[ServerGeneration, dict[str, dict[Action, int]]]]()
     for entry in entries:
-        if entry.action == Action.BUY:
-            if ids.get(entry.datacenter_id) is None:
-                ids[entry.datacenter_id] = {entry.server_generation: []}
-            if ids[entry.datacenter_id].get(entry.server_generation) is None:
-                ids[entry.datacenter_id][entry.server_generation] = []
-            for _ in range(entry.amount):
-                ids[entry.datacenter_id][entry.server_generation].append(
-                    {
-                        "id": counter,
-                        "expires_at": entry.timestep
-                        + server_map[entry.server_generation].life_expectancy
-                        - 1,
-                    }
-                )
-                solution.append(
-                    {
-                        "time_step": entry.timestep,
-                        "datacenter_id": entry.datacenter_id,
-                        "server_id": counter,
-                        "server_generation": entry.server_generation.value,
-                        "action": "buy",
-                    }
-                )
-                counter += 1
-        elif entry.action == Action.DISMISS:
-
-            for _ in range(entry.amount):
-                server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
-                solution.append(
-                    {
-                        "time_step": entry.timestep,
-                        "datacenter_id": entry.datacenter_id,
-                        "server_id": server_id["id"],
-                        "server_generation": entry.server_generation.value,
-                        "action": "dismiss",
-                    }
-                )
-            # # Pop until we have no more expired servers
-            while (
-                len(ids[entry.datacenter_id][entry.server_generation]) > 0
-                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
-                <= entry.timestep
-            ):
-                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
-        elif entry.action == Action.MOVE:
-            # # Pop until we have no more expired servers
-            while (
-                len(ids[entry.datacenter_id][entry.server_generation]) > 0
-                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
-                <= entry.timestep
-            ):
-                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
-            if ids.get(entry.datacenter_target) is None:
-                ids[entry.datacenter_target] = {entry.server_generation: []}
-            if ids[entry.datacenter_target].get(entry.server_generation) is None:
-                ids[entry.datacenter_target][entry.server_generation] = []
-
-            for _ in range(entry.amount):
-                # Find oldest server id. This should be at the front of the list
-                server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
-                ids[entry.datacenter_target][entry.server_generation].append(server_id)
-                solution.append(
-                    {
-                        "time_step": entry.timestep,
-                        "datacenter_id": entry.datacenter_id,
-                        "server_id": server_id["id"],
-                        "server_generation": entry.server_generation.value,
-                        "action": "move",
-                    }
-                )
-                # Now hold it at the new datacenter
-                solution.append(
-                    {
-                        "time_step": entry.timestep + 1,
-                        "datacenter_id": entry.datacenter_target,
-                        "server_id": server_id["id"],
-                        "server_generation": entry.server_generation.value,
-                        "action": "hold",
-                    }
-                )
-                # Now we put the id back to the new datacenter
-                ids[entry.datacenter_target][entry.server_generation].insert(
-                    0, server_id
-                )
-                # Sort the list by server id
-                ids[entry.datacenter_target][entry.server_generation] = sorted(
-                    ids[entry.datacenter_target][entry.server_generation],
-                    key=lambda x: x["id"],
-                )
+        if entry_map.get(entry.timestep) is None:
+            entry_map[entry.timestep] = {}
+        if entry_map[entry.timestep].get(entry.server_generation) is None:
+            entry_map[entry.timestep][entry.server_generation] = {}
+        if (
+            entry_map[entry.timestep][entry.server_generation].get(entry.datacenter_id)
+            is None
+        ):
+            entry_map[entry.timestep][entry.server_generation][entry.datacenter_id] = {
+                Action.BUY: 0,
+                Action.DISMISS: 0,
+            }
+        entry_map[entry.timestep][entry.server_generation][entry.datacenter_id][
+            entry.action
+        ] = entry.amount
+    counter = 0
+    for ts in range(1, 169):
+        if entry_map.get(ts) is None:
+            continue
+        for server_generation, datacenter_map in entry_map[ts].items():
+            for datacenter_id, action_map in datacenter_map.items():
+                amount = action_map[Action.BUY]
+                if ids.get(datacenter_id) is None:
+                    ids[datacenter_id] = {server_generation: []}
+                if ids[datacenter_id].get(server_generation) is None:
+                    ids[datacenter_id][server_generation] = []
+                for _ in range(amount):
+                    ids[datacenter_id][server_generation].append(
+                        {
+                            "id": counter,
+                            "expires_at": ts
+                            + server_map[server_generation].life_expectancy
+                            - 1,
+                        }
+                    )
+                    solution.append(
+                        {
+                            "time_step": ts,
+                            "datacenter_id": datacenter_id,
+                            "server_id": counter,
+                            "server_generation": server_generation.value,
+                            "action": "buy",
+                        }
+                    )
+                    counter += 1
+                amount = action_map[Action.DISMISS]
+                for _ in range(amount):
+                    if not ids[datacenter_id][server_generation]:
+                        break
+                    server_id = ids[datacenter_id][server_generation].pop(0)
+                    solution.append(
+                        {
+                            "time_step": ts,
+                            "datacenter_id": datacenter_id,
+                            "server_id": server_id["id"],
+                            "server_generation": server_generation.value,
+                            "action": "dismiss",
+                        }
+                    )
+                # # Pop until we have no more expired servers
+                while (
+                    len(ids[datacenter_id][server_generation]) > 0
+                    and ids[datacenter_id][server_generation][0]["expires_at"] <= ts
+                ):
+                    _ = ids[datacenter_id][server_generation].pop(0)
     return solution
 
 
