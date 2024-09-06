@@ -133,6 +133,34 @@ class Evaluator:
             (a.amount, a.timestep)
         )
 
+    def move(self, a: models.SolutionEntry):
+        servers = self.operating_servers.get(a.server_generation, {}).get(
+            a.datacenter_id, []
+        )
+        if not servers:
+            raise ValueError("No servers to move")
+        remaning_amount = a.amount
+        target = a.target_datacenter
+        if self.operating_servers[a.server_generation].get(target) is None:
+            self.operating_servers[a.server_generation][target] = []
+        for i, server in enumerate(servers):
+            if remaning_amount == 0:
+                break
+            amount, bought_time = server
+            if amount > remaning_amount:
+                servers[i] = (amount - remaning_amount, bought_time)
+                remaning_amount = 0
+                # Put capacity in target datacenter
+                self.operating_servers[a.server_generation][target].append(
+                    (a.amount, bought_time)
+                )
+            else:
+                servers[i] = (0, bought_time)
+                remaning_amount -= amount
+                self.operating_servers[a.server_generation][target].append(
+                    (amount, bought_time)
+                )
+
     def expire_servers(self, ts: int):
         for generation, datacenters in self.operating_servers.items():
             life_expectancy = self.server_map[generation].life_expectancy

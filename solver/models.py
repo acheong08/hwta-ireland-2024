@@ -121,6 +121,7 @@ class SolutionEntry:
     server_generation: ServerGeneration
     action: Action
     amount: int
+    target_datacenter: str = ""
 
     def to_dict(self):
         return {

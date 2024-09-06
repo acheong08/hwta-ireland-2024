@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
     initial_solution = actions_to_np(get_solution(f"merged/{SEED}.json"))
     algorithm = NSGA2(
-        pop_size=100,
+        pop_size=10,
         eliminate_duplicates=True,
         sampling=PerturbedSampling(initial_solution),  # type: ignore[reportArgumentType]
         crossover=SBX(prob=0.9, eta=15, vtype=int),
