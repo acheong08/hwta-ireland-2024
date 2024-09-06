@@ -1,6 +1,5 @@
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false, reportMissingTypeArgument=false, reportUnknownParameterType=false, reportAny=false, reportUnknownArgumentType=false
 import itertools
-import json
 from typing import Any, override
 
 import numpy as np
@@ -129,7 +128,7 @@ def decode_actions(x: NDArray[np.int64]) -> list[models.SolutionEntry]:
         if comb[3] == models.Action.MOVE:
             actions.append(
                 models.SolutionEntry(
-                    comb[0] + 1,
+                    comb[0],
                     comb[1],
                     comb[2],
                     models.Action.MOVE,
@@ -138,10 +137,10 @@ def decode_actions(x: NDArray[np.int64]) -> list[models.SolutionEntry]:
                 )
             )
             n += 2
-            continue
+            raise NotImplementedError("Moving servers not implemented")
         actions.append(
             models.SolutionEntry(
-                comb[0] + 1,
+                comb[0],
                 comb[1],
                 comb[2],
                 comb[3],
@@ -154,7 +153,8 @@ def decode_actions(x: NDArray[np.int64]) -> list[models.SolutionEntry]:
 
 def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
     action_map: dict[
-        int, dict[models.ServerGeneration, dict[str, dict[models.Action, int]]]
+        int,
+        dict[models.ServerGeneration, dict[str, dict[models.Action, tuple[int, int]]]],
     ] = {}
     for action in actions:
         if action.timestep not in action_map:
@@ -170,7 +170,14 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
             ] = {}
         action_map[action.timestep][action.server_generation][action.datacenter_id][
             action.action
-        ] = action.amount
+        ] = (
+            action.amount,
+            (
+                DATACENTERS.index(DATACENTER_MAP[action.target_datacenter])
+                if action.target_datacenter
+                else 0
+            ),
+        )
     out = np.zeros(N_VAR, dtype=int)
     n = 0
     for comb in itertools.product(
@@ -183,15 +190,19 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
             n += 2
             continue
         if comb[0] not in action_map:
+            n += 1
             continue
         if comb[2] not in action_map[comb[0]]:
+            n += 1
             continue
         if comb[1] not in action_map[comb[0]][comb[2]]:
+            n += 1
             continue
         if comb[3] not in action_map[comb[0]][comb[2]][comb[1]]:
+            n += 1
             continue
 
-        out[n] = action_map[comb[0]][comb[2]][comb[1]][comb[3]]
+        out[n] = action_map[comb[0]][comb[2]][comb[1]][comb[3]][0]
         n += 1
     print("Done decoding")
     return out
@@ -209,25 +220,19 @@ def action_to_dict(a: list[models.SolutionEntry]):
 
 if __name__ == "__main__":
 
-    initial_solution = get_solution(f"merged/{SEED}.json")
-    initial = json.dumps(action_to_dict(initial_solution))
-    # Reverse the process
-    np_solution = actions_to_np(initial_solution)
-    initial_solution = decode_actions(np_solution)
-    initial2 = json.dumps(action_to_dict(initial_solution))
-    print(initial == initial2)
-    # algorithm = PatternSearch(x0=initial_solution)
-    # np.random.seed(2281)
-    # demand = get_demand()
-    # problem = MyProblem(demand)
-    # termination = get_termination("time", 1)
-    # res: None | Any = minimize(problem, algorithm, termination, verbose=True)  # type: ignore[reportUnknownVariableType]
-    # if res is None or res.X is None:
-    #     print("No solution found")
-    #     exit()
-    #
-    # best_solution = decode_actions(res.X)
-    # best_score = Evaluator(
-    #     best_solution, demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
-    # ).get_score()
-    # print(f"Best score: {best_score}")
+    initial_solution = actions_to_np(get_solution(f"merged/{SEED}.json"))
+    algorithm = PatternSearch(x0=initial_solution)
+    np.random.seed(2281)
+    demand = get_demand()
+    problem = MyProblem(demand)
+    termination = get_termination("time", 1)
+    res: None | Any = minimize(problem, algorithm, termination, verbose=True)  # type: ignore[reportUnknownVariableType]
+    if res is None or res.X is None:
+        print("No solution found")
+        exit()
+
+    best_solution = decode_actions(res.X)
+    best_score = Evaluator(
+        best_solution, demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
+    ).get_score()
+    print(f"Best score: {best_score}")

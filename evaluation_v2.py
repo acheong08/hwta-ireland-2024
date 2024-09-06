@@ -95,8 +95,8 @@ class Evaluator:
                 self.buy(a)
             elif a.action == models.Action.DISMISS:
                 self.dismiss(a)
-            elif a.action == models.Action.MOVE:
-                self.move(a)
+            # elif a.action == models.Action.MOVE:
+            #     self.move(a)
 
     def dismiss(self, a: models.SolutionEntry):
         if self.operating_servers.get(a.server_generation) is None:
@@ -309,7 +309,8 @@ class Evaluator:
                 self.do_action(ts)
                 self.expire_servers(ts)
                 self.check_capacity()
-        except Exception:
+        except Exception as e:
+            print(e)
             return False
 
         # Reset state
