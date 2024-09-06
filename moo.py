@@ -70,33 +70,9 @@ class MyProblem(Problem):
             ):
                 upper_bounds[n] = 0
                 continue
-            # Upper bound is the change in demand
             upper_bounds[n] = (
-                (
-                    demand_for(
-                        self.demand,
-                        comb[0],
-                        comb[2],
-                        DATACENTER_MAP[comb[1]].latency_sensitivity,
-                    )
-                    - demand_for(
-                        self.demand,
-                        comb[0] - 1,
-                        comb[2],
-                        DATACENTER_MAP[comb[1]].latency_sensitivity,
-                    )
-                )
-                if comb[0] != 1
-                else demand_for(
-                    self.demand,
-                    comb[0],
-                    comb[2],
-                    DATACENTER_MAP[comb[1]].latency_sensitivity,
-                )
+                DATACENTER_MAP[comb[1]].slots_capacity // SERVER_MAP[comb[2]].slots_size
             )
-            if upper_bounds[n] < 0:
-                upper_bounds[n] = 0
-
         super().__init__(
             n_var=N_VAR,
             n_obj=1,
@@ -236,7 +212,7 @@ if __name__ == "__main__":
 
     initial_solution = actions_to_np(get_solution(f"merged/{SEED}.json"))
     algorithm = NSGA2(
-        pop_size=10,
+        pop_size=50,
         eliminate_duplicates=True,
         sampling=PerturbedSampling(initial_solution),  # type: ignore[reportArgumentType]
         crossover=SBX(prob=0.9, eta=15, vtype=int),
