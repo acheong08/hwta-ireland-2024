@@ -57,6 +57,12 @@ def generate(
                         }
                     )
                     counter += 1
+                # # Pop until we have no more expired servers
+                while (
+                    len(ids[datacenter_id][server_generation]) > 0
+                    and ids[datacenter_id][server_generation][0]["expires_at"] <= ts
+                ):
+                    _ = ids[datacenter_id][server_generation].pop(0)
                 amount = action_map[Action.DISMISS]
                 for _ in range(amount):
                     if not ids[datacenter_id][server_generation]:
@@ -71,12 +77,7 @@ def generate(
                             "action": "dismiss",
                         }
                     )
-                # # Pop until we have no more expired servers
-                while (
-                    len(ids[datacenter_id][server_generation]) > 0
-                    and ids[datacenter_id][server_generation][0]["expires_at"] <= ts
-                ):
-                    _ = ids[datacenter_id][server_generation].pop(0)
+
     return solution
 
 
