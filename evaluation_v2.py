@@ -309,8 +309,7 @@ class Evaluator:
                 self.do_action(ts)
                 self.expire_servers(ts)
                 self.check_capacity()
-        except Exception as e:
-            print(e)
+        except Exception:
             return False
 
         # Reset state

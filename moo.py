@@ -1,6 +1,7 @@
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false, reportMissingTypeArgument=false, reportUnknownParameterType=false, reportAny=false, reportUnknownArgumentType=false
 import itertools
 import json
+import multiprocessing
 import time
 from typing import Any, override
 
@@ -36,9 +37,6 @@ SELLING_PRICES_MAP = sp_to_map(SELLING_PRICES)
 N_VAR = (MAX_TS - 1) * len(SERVERS) * len(models.ServerGeneration) * (1 + 1 + 2)
 
 
-SEED = 2281
-
-
 def demand_for(
     demand_map: dict[int, dict[models.ServerGeneration, dict[models.Sensitivity, int]]],
     ts: int,
@@ -50,10 +48,13 @@ def demand_for(
 
 class MyProblem(Problem):
 
-    def __init__(self, demand: list[models.Demand], time_limit: int = 60 * 5):
+    def __init__(
+        self, demand: list[models.Demand], seed: int, time_limit: int = 60 * 60 * 6
+    ):
         self.demand = demand_to_map(demand)
         self.best_score = 0
         self.best_solution: list[models.SolutionEntry] = []
+        self.seed = seed
 
         self.time_limit = time_limit
         self.init_time = time.time()
@@ -111,24 +112,26 @@ class MyProblem(Problem):
         valid_solution = evaluator.quick_validate()
         if valid_solution:
             score = evaluator.get_score()
-            print(score)
             if score > self.best_score:
                 self.best_score = score
                 self.best_solution = actions
+                print(self.seed, score)
             return -score, -1  # Negative score because we're minimizing, -1 for g
         else:
             return 0, 1  # 0 for f, 1 for g (constraint violation)
 
     @override
     def _evaluate(self, x: NDArray[np.int64], out: dict[str, Any]):
-        f, g = self.evaluate_individual(x[0])
         if self.init_time + self.time_limit < time.time():
             print("time limit reached")
             print("Best score:", self.best_score)
             json.dump(
-                generate(self.best_solution, SERVERS), open(f"output/{SEED}.json", "w")
+                generate(self.best_solution, SERVERS),
+                open(f"output/{self.seed}.json", "w"),
             )
-            exit()
+            time.sleep(100000000000000000)
+        f, g = self.evaluate_individual(x[0])
+
         out["F"] = np.array(f)
         out["G"] = np.array(g)
 
@@ -235,21 +238,33 @@ def action_to_dict(a: list[models.SolutionEntry]):
     return b
 
 
-if __name__ == "__main__":
+def run_moo(seed: int):
 
-    initial_solution = actions_to_np(get_solution(f"merged/{SEED}.json"))
+    initial_solution = actions_to_np(get_solution(f"merged/{seed}.json"))
     algorithm = PatternSearch(x0=initial_solution)
-    np.random.seed(2281)
+    np.random.seed(seed)
     demand = get_demand()
 
-    problem = MyProblem(demand)
+    problem = MyProblem(demand, seed)
     res: None | Any = minimize(problem, algorithm)  # type: ignore[reportUnknownVariableType]
     if res is None or res.X is None:
         print("No solution found")
-        exit()
+        return
 
     best_solution = decode_actions(res.X)
     best_score = Evaluator(
         best_solution, demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
     ).get_score()
     print(f"Best score: {best_score}")
+
+
+if __name__ == "__main__":
+    seeds = [3329, 4201, 8761, 2311, 2663, 4507, 6247, 2281, 4363, 5693]
+
+    with multiprocessing.Pool() as pool:
+        results = pool.map(run_moo, seeds)
+
+    for result in results:
+        print(result)
+
+    print("All runs completed.")
