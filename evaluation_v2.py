@@ -323,8 +323,8 @@ class Evaluator:
         try:
             total_score = 0
             for ts in range(1, 169):
-                self.do_action(ts)
                 self.expire_servers(ts)
+                self.do_action(ts)
                 self.check_capacity()
                 cost = (
                     self.buying_cost(ts)
