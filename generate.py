@@ -57,6 +57,13 @@ def generate(
             ):
                 _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
         elif entry.action == Action.MOVE:
+            # # Pop until we have no more expired servers
+            while (
+                len(ids[entry.datacenter_id][entry.server_generation]) > 0
+                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
+                <= entry.timestep
+            ):
+                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
             if ids.get(entry.datacenter_target) is None:
                 ids[entry.datacenter_target] = {entry.server_generation: []}
             if ids[entry.datacenter_target].get(entry.server_generation) is None:
