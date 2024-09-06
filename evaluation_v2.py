@@ -95,8 +95,8 @@ class Evaluator:
                 self.buy(a)
             elif a.action == models.Action.DISMISS:
                 self.dismiss(a)
-            # elif a.action == models.Action.MOVE:
-            #     self.move(a)
+            elif a.action == models.Action.MOVE:
+                self.move(a)
 
     def dismiss(self, a: models.SolutionEntry):
         if self.operating_servers.get(a.server_generation) is None:
