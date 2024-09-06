@@ -59,15 +59,29 @@ class MyProblem(Problem):
             models.ServerGeneration,
             models.Action,
         ):
+            n_increment = 1 if comb[3] != models.Action.MOVE else 2
+            if comb[0] == MIN_TS and comb[3] != models.Action.BUY:
+                upper_bounds[n] = 0
+                n += n_increment
+                continue
+            if (
+                comb[0] < SERVER_MAP[comb[2]].release_time[0]
+                or comb[0] > SERVER_MAP[comb[2]].release_time[1]
+            ) and comb[3] == models.Action.BUY:
+                upper_bounds[n] = 0
+                n += n_increment
+                continue
             if comb[3] == models.Action.MOVE:
-                upper_bounds[n] = 1
-                upper_bounds[n + 1] = len(DATACENTER_MAP) - 1
-                n += 2
+                # Must be after release time
+                if comb[0] > SERVER_MAP[comb[2]].release_time[0]:
+                    upper_bounds[n] = 1
+                    upper_bounds[n + 1] = len(DATACENTER_MAP) - 1
+                n += n_increment
                 continue
             upper_bounds[n] = (
                 DATACENTER_MAP[comb[1]].slots_capacity // SERVER_MAP[comb[2]].slots_size
             )
-            n += 1
+            n += n_increment
 
         super().__init__(
             n_var=N_VAR,
