@@ -1,5 +1,7 @@
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false, reportMissingTypeArgument=false, reportUnknownParameterType=false, reportAny=false, reportUnknownArgumentType=false
 import itertools
+import json
+import time
 from typing import Any, override
 
 import numpy as np
@@ -7,11 +9,11 @@ from numpy.typing import NDArray
 from pymoo.algorithms.soo.nonconvex.pattern import PatternSearch
 from pymoo.core.problem import Problem
 from pymoo.optimize import minimize  # pyright: ignore[reportUnknownVariableType]
-from pymoo.termination import get_termination  # type: ignore[reportUnknownVariableType]
 
 import solver.models as models
 from constants import get_datacenters, get_demand, get_selling_prices, get_servers
 from evaluation_v2 import Evaluator
+from generate import generate
 from reverse import get_solution
 from utils import demand_to_map, sp_to_map
 
@@ -34,6 +36,9 @@ SELLING_PRICES_MAP = sp_to_map(SELLING_PRICES)
 N_VAR = (MAX_TS - 1) * len(SERVERS) * len(models.ServerGeneration) * (1 + 1 + 2)
 
 
+SEED = 2281
+
+
 def demand_for(
     demand_map: dict[int, dict[models.ServerGeneration, dict[models.Sensitivity, int]]],
     ts: int,
@@ -45,12 +50,13 @@ def demand_for(
 
 class MyProblem(Problem):
 
-    def __init__(
-        self,
-        demand: list[models.Demand],
-    ):
+    def __init__(self, demand: list[models.Demand], time_limit: int = 60 * 5):
         self.demand = demand_to_map(demand)
+        self.best_score = 0
+        self.best_solution: list[models.SolutionEntry] = []
 
+        self.time_limit = time_limit
+        self.init_time = time.time()
         upper_bounds = np.zeros(N_VAR)
         n = 0
         for comb in itertools.product(
@@ -106,6 +112,9 @@ class MyProblem(Problem):
         if valid_solution:
             score = evaluator.get_score()
             print(score)
+            if score > self.best_score:
+                self.best_score = score
+                self.best_solution = actions
             return -score, -1  # Negative score because we're minimizing, -1 for g
         else:
             return 0, 1  # 0 for f, 1 for g (constraint violation)
@@ -113,7 +122,13 @@ class MyProblem(Problem):
     @override
     def _evaluate(self, x: NDArray[np.int64], out: dict[str, Any]):
         f, g = self.evaluate_individual(x[0])
-
+        if self.init_time + self.time_limit < time.time():
+            print("time limit reached")
+            print("Best score:", self.best_score)
+            json.dump(
+                generate(self.best_solution, SERVERS), open(f"output/{SEED}.json", "w")
+            )
+            exit()
         out["F"] = np.array(f)
         out["G"] = np.array(g)
 
@@ -213,9 +228,6 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
     return out
 
 
-SEED = 2281
-
-
 def action_to_dict(a: list[models.SolutionEntry]):
     b: list[dict[str, Any]] = []
     for i in a:
@@ -231,8 +243,7 @@ if __name__ == "__main__":
     demand = get_demand()
 
     problem = MyProblem(demand)
-    termination = get_termination("time", 1)
-    res: None | Any = minimize(problem, algorithm, termination, verbose=True)  # type: ignore[reportUnknownVariableType]
+    res: None | Any = minimize(problem, algorithm)  # type: ignore[reportUnknownVariableType]
     if res is None or res.X is None:
         print("No solution found")
         exit()
