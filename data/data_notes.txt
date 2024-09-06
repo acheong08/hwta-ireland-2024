@@ -1,1 +1,99 @@
-If there is a demand of 600 at a time for the CPU.s1 and the CPU.s1 has a capacity of 60, then you need 10 CPU.s1s to meet that demand
+#datacenters.csv
+
+datacenter_id,cost_of_energy,latency_sensitivity,slots_capacity
+DC1,0.25,low,25245
+DC2,0.35,medium,15300
+DC3,0.65,high,7020
+DC4,0.75,high,8280
+
+
+#snippet of demand.csv
+
+time_step,latency_sensitivity,CPU.S1,CPU.S2,CPU.S3,CPU.S4,GPU.S1,GPU.S2,GPU.S3
+1,high,4000,0,0,0,30,0,0
+2,high,8160,0,0,0,61,0,0
+3,high,11016,0,0,0,95,0,0
+4,high,13953,0,0,0,130,0,0
+5,high,19186,0,0,0,168,0,0
+6,high,27627,0,0,0,208,0,0
+7,high,25785,0,0,0,250,0,0
+8,high,30942,0,0,0,294,0,0
+9,high,36550,0,0,0,342,0,0
+10,high,42644,0,0,0,391,0,0
+
+
+#selling_prices.csv
+
+server_generation,latency_sensitivity,selling_price
+CPU.S1,low,10
+CPU.S2,low,10
+CPU.S3,low,11
+CPU.S4,low,12
+GPU.S1,low,1500
+GPU.S2,low,1600
+GPU.S3,low,2150
+CPU.S1,medium,15
+CPU.S2,medium,15
+CPU.S3,medium,16.5
+CPU.S4,medium,18
+GPU.S1,medium,1680
+GPU.S2,medium,1800
+GPU.S3,medium,2450
+CPU.S1,high,25
+CPU.S2,high,25
+CPU.S3,high,27.5
+CPU.S4,high,30
+GPU.S1,high,1875
+GPU.S2,high,2000
+GPU.S3,high,2700
+
+
+
+#servers.csv
+
+server_generation,server_type,release_time,purchase_price,slots_size,energy_consumption,capacity,life_expectancy,cost_of_moving,average_maintenance_fee
+CPU.S1,CPU,"[1,60]",15000,2,400,60,96,1000,288
+CPU.S2,CPU,"[37,96]",16000,2,460,75,96,1000,308
+CPU.S3,CPU,"[73,132]",19500,2,800,120,96,1000,375
+CPU.S4,CPU,"[109,168]",22000,2,920,160,96,1000,423
+GPU.S1,GPU,"[1,72]",120000,4,3000,8,96,1000,2310
+GPU.S2,GPU,"[49,120]",140000,4,3000,8,96,1000,2695
+GPU.S3,GPU,"[97,168]",160000,4,4200,8,96,1000,3080
+
+
+
+#snippet of solution's expected format
+
+[
+  {
+    "time_step": 1,
+    "datacenter_id": "DC1",
+    "server_generation": "CPU.S1",
+    "server_id": "7ee8a1de-b4b8-4fce-9bd6-19fdf8c1e409",
+    "action": "buy"
+  },... 
+
+    {
+    "time_step": 65,
+    "datacenter_id": "DC1",
+    "server_generation": "CPU.S2",
+    "server_id": "76de35c8-bc78-4ac7-bff8-51fa31299565",
+    "action": "buy"
+  },...
+
+    {
+    "time_step": 82,
+    "datacenter_id": "DC2",
+    "server_generation": "CPU.S3",
+    "server_id": "c753a98c-66ae-410f-9c49-37d8689ea4bd",
+    "action": "buy"
+  },...
+
+    {
+    "time_step": 129,
+    "datacenter_id": "DC4",
+    "server_generation": "GPU.S3",
+    "server_id": "554537a9-2d90-4e86-bf4c-985205e4df75",
+    "action": "buy"
+  }
+]
