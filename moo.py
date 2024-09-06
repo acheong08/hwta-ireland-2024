@@ -49,7 +49,7 @@ def demand_for(
 class MyProblem(Problem):
 
     def __init__(
-        self, demand: list[models.Demand], seed: int, time_limit: int = 60 * 60 * 6
+        self, demand: list[models.Demand], seed: int, time_limit: int = 60 * 60 * 5
     ):
         self.demand = demand_to_map(demand)
         self.best_score = 0
@@ -95,6 +95,7 @@ class MyProblem(Problem):
             )
             n += n_increment
 
+        self.time_limit_reached = False
         super().__init__(
             n_var=N_VAR,
             n_obj=1,
@@ -122,14 +123,17 @@ class MyProblem(Problem):
 
     @override
     def _evaluate(self, x: NDArray[np.int64], out: dict[str, Any]):
+        if self.time_limit_reached:
+            time.sleep(60 * 60 * 1)
+            return
         if self.init_time + self.time_limit < time.time():
+            self.time_limit_reached = True
             print("time limit reached")
             print("Best score:", self.best_score)
             json.dump(
                 generate(self.best_solution, SERVERS),
                 open(f"output/{self.seed}.json", "w"),
             )
-            time.sleep(100000000000000000)
         f, g = self.evaluate_individual(x[0])
 
         out["F"] = np.array(f)
