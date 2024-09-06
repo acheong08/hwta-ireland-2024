@@ -117,6 +117,10 @@ class MyProblem(Problem):
                 self.best_score = score
                 self.best_solution = actions
                 print(self.seed, score)
+                json.dump(
+                    generate(self.best_solution, SERVERS),
+                    open(f"output/{self.seed}.json", "w"),
+                )
             return -score, -1  # Negative score because we're minimizing, -1 for g
         else:
             return 0, 1  # 0 for f, 1 for g (constraint violation)
