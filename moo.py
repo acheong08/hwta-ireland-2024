@@ -75,7 +75,12 @@ class MyProblem(Problem):
                 # Must be after release time
                 if comb[0] > SERVER_MAP[comb[2]].release_time[0]:
                     upper_bounds[n] = 0
-                    upper_bounds[n + 1] = len(DATACENTER_MAP) - 1
+                    upper_bounds[n + 1] = 0
+                upper_bounds[n] = (
+                    DATACENTER_MAP[comb[1]].slots_capacity
+                    // SERVER_MAP[comb[2]].slots_size
+                )
+                upper_bounds[n + 1] = len(DATACENTER_MAP) - 1
                 n += n_increment
                 continue
             upper_bounds[n] = (
@@ -100,6 +105,7 @@ class MyProblem(Problem):
         valid_solution = evaluator.quick_validate()
         if valid_solution:
             score = evaluator.get_score()
+            print(score)
             return -score, -1  # Negative score because we're minimizing, -1 for g
         else:
             return 0, 1  # 0 for f, 1 for g (constraint violation)
@@ -137,7 +143,6 @@ def decode_actions(x: NDArray[np.int64]) -> list[models.SolutionEntry]:
                 )
             )
             n += 2
-            raise NotImplementedError("Moving servers not implemented")
         actions.append(
             models.SolutionEntry(
                 comb[0],
@@ -224,6 +229,7 @@ if __name__ == "__main__":
     algorithm = PatternSearch(x0=initial_solution)
     np.random.seed(2281)
     demand = get_demand()
+
     problem = MyProblem(demand)
     termination = get_termination("time", 1)
     res: None | Any = minimize(problem, algorithm, termination, verbose=True)  # type: ignore[reportUnknownVariableType]
