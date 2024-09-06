@@ -50,12 +50,50 @@ def generate(
                     }
                 )
             # # Pop until we have no more expired servers
-            # while (
-            #     len(ids[entry.datacenter_id][entry.server_generation]) > 0
-            #     and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
-            #     <= entry.timestep
-            # ):
-            #     _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
+            while (
+                len(ids[entry.datacenter_id][entry.server_generation]) > 0
+                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
+                <= entry.timestep
+            ):
+                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
+        elif entry.action == Action.MOVE:
+            if ids.get(entry.datacenter_target) is None:
+                ids[entry.datacenter_target] = {entry.server_generation: []}
+            if ids[entry.datacenter_target].get(entry.server_generation) is None:
+                ids[entry.datacenter_target][entry.server_generation] = []
+
+            for _ in range(entry.amount):
+                # Find oldest server id. This should be at the front of the list
+                server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
+                ids[entry.datacenter_target][entry.server_generation].append(server_id)
+                solution.append(
+                    {
+                        "time_step": entry.timestep,
+                        "datacenter_id": entry.datacenter_id,
+                        "server_id": server_id["id"],
+                        "server_generation": entry.server_generation.value,
+                        "action": "move",
+                    }
+                )
+                # Now hold it at the new datacenter
+                solution.append(
+                    {
+                        "time_step": entry.timestep + 1,
+                        "datacenter_id": entry.datacenter_target,
+                        "server_id": server_id["id"],
+                        "server_generation": entry.server_generation.value,
+                        "action": "hold",
+                    }
+                )
+                # Now we put the id back to the new datacenter
+                ids[entry.datacenter_target][entry.server_generation].insert(
+                    0, server_id
+                )
+                # Sort the list by server id
+                ids[entry.datacenter_target][entry.server_generation] = sorted(
+                    ids[entry.datacenter_target][entry.server_generation],
+                    key=lambda x: x["id"],
+                )
     return solution
 
 

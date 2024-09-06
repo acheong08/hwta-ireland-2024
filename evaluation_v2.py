@@ -137,7 +137,7 @@ class Evaluator:
             raise ValueError("No servers to move")
         self.move_costs += a.amount * 1000
         remaning_amount = a.amount
-        target = a.target_datacenter
+        target = a.datacenter_target
         if self.operating_servers[a.server_generation].get(target) is None:
             self.operating_servers[a.server_generation][target] = []
         for i, server in enumerate(servers):

@@ -161,7 +161,7 @@ def decode_actions(x: NDArray[np.int64]) -> list[models.SolutionEntry]:
                     comb[2],
                     models.Action.MOVE,
                     amount,
-                    target_datacenter=DATACENTERS[int(x[n + 1])].datacenter_id,
+                    datacenter_target=DATACENTERS[int(x[n + 1])].datacenter_id,
                 )
             )
             n += 2
@@ -200,8 +200,8 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
         ] = (
             action.amount,
             (
-                DATACENTERS.index(DATACENTER_MAP[action.target_datacenter])
-                if action.target_datacenter
+                DATACENTERS.index(DATACENTER_MAP[action.datacenter_target])
+                if action.datacenter_target
                 else 0
             ),
         )
