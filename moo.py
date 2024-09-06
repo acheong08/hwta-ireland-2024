@@ -1,14 +1,13 @@
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false, reportMissingTypeArgument=false, reportUnknownParameterType=false, reportAny=false, reportUnknownArgumentType=false
 import itertools
-from concurrent.futures import ProcessPoolExecutor
 from typing import Any, override
 
 import numpy as np
 from numpy.typing import NDArray
-from pymoo.algorithms.moo.nsga2 import NSGA2, PM, SBX
+from pymoo.algorithms.soo.nonconvex.pattern import PatternSearch
 from pymoo.core.problem import Problem
-from pymoo.core.sampling import Sampling
 from pymoo.optimize import minimize  # pyright: ignore[reportUnknownVariableType]
+from pymoo.termination import get_termination  # type: ignore[reportUnknownVariableType]
 
 import solver.models as models
 from constants import get_datacenters, get_demand, get_selling_prices, get_servers
@@ -51,34 +50,11 @@ class MyProblem(Problem):
     ):
         self.demand = demand_to_map(demand)
 
-        upper_bounds = np.zeros(N_VAR)
-        for n, comb in enumerate(
-            itertools.product(
-                range(MIN_TS, MAX_TS + 1),
-                DATACENTER_MAP,
-                models.ServerGeneration,
-                models.Action,
-            )
-        ):
-            if comb[0] == MIN_TS and comb[3] != models.Action.BUY:
-                upper_bounds[n] = 0
-                continue
-            # Check release time
-            if (
-                comb[0] < SERVER_MAP[comb[2]].release_time[0]
-                or comb[0] > SERVER_MAP[comb[2]].release_time[1]
-            ):
-                upper_bounds[n] = 0
-                continue
-            upper_bounds[n] = (
-                DATACENTER_MAP[comb[1]].slots_capacity // SERVER_MAP[comb[2]].slots_size
-            )
         super().__init__(
             n_var=N_VAR,
             n_obj=1,
             n_ieq_constr=1,
             xl=np.zeros(N_VAR),
-            xu=upper_bounds,
             vtype=int,
         )
 
@@ -121,18 +97,20 @@ class MyProblem(Problem):
             return 0, 1  # 0 for f, 1 for g (constraint violation)
 
     @override
-    def _evaluate(self, x: NDArray[np.float64], out: dict[str, Any]):
-        n_individuals = int(x.shape[0])
-        with ProcessPoolExecutor() as executor:
-            results: list[tuple[float, float]] = list(
-                executor.map(self.evaluate_individual, x)
-            )
+    def _evaluate(self, x: NDArray[np.int64], out: dict[str, Any]):
+        # n_individuals = int(x.shape[0])
+        # print(n_individuals)
+        # with ProcessPoolExecutor() as executor:
+        #     results: list[tuple[float, float]] = list(
+        #         executor.map(self.evaluate_individual, x)
+        #     )
+        #
+        # f = np.array([r[0] for r in results]).reshape(n_individuals, 1)
+        # g = np.array([r[1] for r in results]).reshape(n_individuals, 1)
+        f, g = self.evaluate_individual(x[0])
 
-        f = np.array([r[0] for r in results]).reshape(n_individuals, 1)
-        g = np.array([r[1] for r in results]).reshape(n_individuals, 1)
-
-        out["F"] = f
-        out["G"] = g
+        out["F"] = np.array(f)
+        out["G"] = np.array(g)
 
 
 def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
@@ -175,62 +153,22 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
     return out
 
 
-class PerturbedSampling(Sampling):
-    def __init__(self, initial_solution: NDArray[np.int64]):
-        super().__init__()
-        self.initial_solution: NDArray[np.int64] = initial_solution
-
-    @override
-    def _do(  # type:ignore[reportIncompatibleMethodOverride]
-        self, problem: Problem, n_samples: int, **kwargs: dict
-    ) -> NDArray[np.int64]:
-        pop: NDArray[np.int64] = np.tile(self.initial_solution, (n_samples, 1))
-
-        for i in range(
-            1, n_samples
-        ):  # Skip the first one to keep one copy of the initial solution
-            # Randomly select a small number of elements to perturb
-            n_perturb: int = np.random.randint(
-                1, max(2, int(0.05 * len(self.initial_solution)))
-            )
-            idx_perturb: NDArray[np.int64] = np.random.choice(
-                len(self.initial_solution), n_perturb, replace=False
-            )
-
-            for idx in idx_perturb:
-                # Perturb the selected elements within their bounds
-                pop[i, idx] = np.random.randint(
-                    problem.xl[idx], problem.xu[idx] + 1  # type:ignore[reportCallIssue]
-                )
-
-        return pop
-
-
 SEED = 2281
 
 if __name__ == "__main__":
 
     initial_solution = actions_to_np(get_solution(f"merged/{SEED}.json"))
-    algorithm = NSGA2(
-        pop_size=50,
-        eliminate_duplicates=True,
-        sampling=PerturbedSampling(initial_solution),  # type: ignore[reportArgumentType]
-        crossover=SBX(prob=0.9, eta=15, vtype=int),
-        mutation=PM(prob=1.0 / N_VAR, eta=20, vtype=int),
-    )
+    algorithm = PatternSearch(x0=initial_solution)
     np.random.seed(2281)
     demand = get_demand()
     problem = MyProblem(demand)
-    res: None | Any = minimize(problem, algorithm, termination=("n_gen", 1000), verbose=True)  # type: ignore[reportUnknownVariableType]
+    termination = get_termination("time", 1)
+    res: None | Any = minimize(problem, algorithm, termination, verbose=True)  # type: ignore[reportUnknownVariableType]
     if res is None or res.X is None:
         print("No solution found")
         exit()
-    result: NDArray[np.int64]
-    if len(res.X.shape) == 1:
-        result = NDArray[np.int64](res.X)
-    else:
-        result = NDArray[np.int64](res.X[0])
-    best_solution = problem.decode_actions(result)
+
+    best_solution = problem.decode_actions(res.X)
     best_score = Evaluator(
         best_solution, demand, SERVER_MAP, DATACENTER_MAP, SELLING_PRICES_MAP
     ).get_score()
