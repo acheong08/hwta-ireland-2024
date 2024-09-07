@@ -10,7 +10,9 @@ def generate(
     solution: list[dict[str, str | int]] = []
     # datacenter_id -> server_generation -> list[server id]
     ids: dict[str, dict[ServerGeneration, list[dict[str, int]]]] = {}
-    entry_map = dict[int, dict[ServerGeneration, dict[str, dict[Action, int]]]]()
+    entry_map = dict[
+        int, dict[ServerGeneration, dict[str, dict[Action, tuple[int, str]]]]
+    ]()
     for entry in entries:
         if entry_map.get(entry.timestep) is None:
             entry_map[entry.timestep] = {}
@@ -21,19 +23,20 @@ def generate(
             is None
         ):
             entry_map[entry.timestep][entry.server_generation][entry.datacenter_id] = {
-                Action.BUY: 0,
-                Action.DISMISS: 0,
+                Action.BUY: (0, ""),
+                Action.DISMISS: (0, ""),
+                Action.MOVE: (0, ""),
             }
         entry_map[entry.timestep][entry.server_generation][entry.datacenter_id][
             entry.action
-        ] = entry.amount
+        ] = (entry.amount, entry.datacenter_target)
     counter = 0
     for ts in range(1, 169):
         if entry_map.get(ts) is None:
             continue
         for server_generation, datacenter_map in entry_map[ts].items():
             for datacenter_id, action_map in datacenter_map.items():
-                amount = action_map[Action.BUY]
+                amount = action_map[Action.BUY][0]
                 if ids.get(datacenter_id) is None:
                     ids[datacenter_id] = {server_generation: []}
                 if ids[datacenter_id].get(server_generation) is None:
@@ -63,7 +66,7 @@ def generate(
                     and ids[datacenter_id][server_generation][0]["expires_at"] <= ts
                 ):
                     _ = ids[datacenter_id][server_generation].pop(0)
-                amount = action_map[Action.DISMISS]
+                amount = action_map[Action.DISMISS][0]
                 for _ in range(amount):
                     if not ids[datacenter_id][server_generation]:
                         break
@@ -76,6 +79,43 @@ def generate(
                             "server_generation": server_generation.value,
                             "action": "dismiss",
                         }
+                    )
+                amount = action_map[Action.MOVE][0]
+                target_datacenter = action_map[Action.MOVE][1]
+                if ids.get(target_datacenter) is None:
+                    ids[target_datacenter] = {server_generation: []}
+                if ids[target_datacenter].get(server_generation) is None:
+                    ids[target_datacenter][server_generation] = []
+                for _ in range(amount):
+                    if not ids[datacenter_id][server_generation]:
+                        break
+                    server_id = ids[datacenter_id][server_generation].pop(0)
+                    solution.append(
+                        {
+                            "time_step": ts,
+                            "datacenter_id": datacenter_id,
+                            "server_id": server_id["id"],
+                            "server_generation": server_generation.value,
+                            "action": "move",
+                        }
+                    )
+                    solution.append(
+                        {
+                            "time_step": ts + 1,
+                            "datacenter_id": target_datacenter,
+                            "server_id": server_id["id"],
+                            "server_generation": server_generation.value,
+                            "action": "hold",
+                        }
+                    )
+                    if ids.get(target_datacenter) is None:
+                        ids[target_datacenter] = {server_generation: []}
+                    if ids[target_datacenter].get(server_generation) is None:
+                        ids[target_datacenter][server_generation] = []
+                    ids[target_datacenter][server_generation].insert(0, server_id)
+                    ids[target_datacenter][server_generation] = sorted(
+                        ids[target_datacenter][server_generation],
+                        key=lambda x: x["id"],
                     )
 
     return solution

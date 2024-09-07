@@ -34,7 +34,7 @@ SELLING_PRICES_MAP = sp_to_map(SELLING_PRICES)
 
 
 # 1 for each combination but 2 for models.Action.MOVE
-N_VAR = (MAX_TS - 1) * len(SERVERS) * len(models.ServerGeneration) * len(models.Action)
+N_VAR = (MAX_TS - 1) * len(SERVERS) * len(models.ServerGeneration) * (1 + 1 + 2)
 
 
 def demand_for(
@@ -66,22 +66,34 @@ class MyProblem(Problem):
             models.ServerGeneration,
             models.Action,
         ):
+            n_increment = 1 if comb[3] != models.Action.MOVE else 2
             if comb[0] == MIN_TS and comb[3] != models.Action.BUY:
                 upper_bounds[n] = 0
-                n += 1
+                n += n_increment
                 continue
             if (
                 comb[0] < SERVER_MAP[comb[2]].release_time[0]
                 or comb[0] > SERVER_MAP[comb[2]].release_time[1]
             ) and comb[3] == models.Action.BUY:
                 upper_bounds[n] = 0
-                n += 1
+                n += n_increment
                 continue
-
+            if comb[3] == models.Action.MOVE:
+                # Must be after release time
+                if comb[0] > SERVER_MAP[comb[2]].release_time[0]:
+                    upper_bounds[n] = 0
+                    upper_bounds[n + 1] = 0
+                upper_bounds[n] = (
+                    DATACENTER_MAP[comb[1]].slots_capacity
+                    // SERVER_MAP[comb[2]].slots_size
+                )
+                upper_bounds[n + 1] = len(DATACENTER_MAP) - 1
+                n += n_increment
+                continue
             upper_bounds[n] = (
                 DATACENTER_MAP[comb[1]].slots_capacity // SERVER_MAP[comb[2]].slots_size
             )
-            n += 1
+            n += n_increment
 
         self.time_limit_reached = False
         super().__init__(
@@ -142,10 +154,21 @@ def decode_actions(x: NDArray[np.int64]) -> list[models.SolutionEntry]:
         models.Action,
     ):
         if x[n] == 0.0:
-            n += 1
+            n += 1 if comb[3] != models.Action.MOVE else 2
             continue
         amount = int(x[n])
-
+        if comb[3] == models.Action.MOVE:
+            actions.append(
+                models.SolutionEntry(
+                    comb[0],
+                    comb[1],
+                    comb[2],
+                    models.Action.MOVE,
+                    amount,
+                    datacenter_target=DATACENTERS[int(x[n + 1])].datacenter_id,
+                )
+            )
+            n += 2
         actions.append(
             models.SolutionEntry(
                 comb[0],
@@ -162,7 +185,7 @@ def decode_actions(x: NDArray[np.int64]) -> list[models.SolutionEntry]:
 def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
     action_map: dict[
         int,
-        dict[models.ServerGeneration, dict[str, dict[models.Action, int]]],
+        dict[models.ServerGeneration, dict[str, dict[models.Action, tuple[int, int]]]],
     ] = {}
     for action in actions:
         if action.timestep not in action_map:
@@ -178,7 +201,14 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
             ] = {}
         action_map[action.timestep][action.server_generation][action.datacenter_id][
             action.action
-        ] = action.amount
+        ] = (
+            action.amount,
+            (
+                DATACENTERS.index(DATACENTER_MAP[action.datacenter_target])
+                if action.datacenter_target
+                else 0
+            ),
+        )
     out = np.zeros(N_VAR, dtype=int)
     n = 0
     for comb in itertools.product(
@@ -187,6 +217,9 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
         models.ServerGeneration,
         models.Action,
     ):
+        if comb[3] == models.Action.MOVE:
+            n += 2
+            continue
         if comb[0] not in action_map:
             n += 1
             continue
@@ -200,7 +233,7 @@ def actions_to_np(actions: list[models.SolutionEntry]) -> NDArray[np.int64]:
             n += 1
             continue
 
-        out[n] = action_map[comb[0]][comb[2]][comb[1]][comb[3]]
+        out[n] = action_map[comb[0]][comb[2]][comb[1]][comb[3]][0]
         n += 1
     print("Done decoding")
     return out

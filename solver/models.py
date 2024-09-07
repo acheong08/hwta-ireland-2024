@@ -111,6 +111,7 @@ class Demand:
 class Action(Enum):
     BUY = "buy"
     DISMISS = "dismiss"
+    MOVE = "move"
 
 
 @dataclass
@@ -120,6 +121,7 @@ class SolutionEntry:
     server_generation: ServerGeneration
     action: Action
     amount: int
+    datacenter_target: str = ""
 
     def to_dict(self):
         return {
