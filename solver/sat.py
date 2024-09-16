@@ -124,19 +124,6 @@ def solve_supply(
         }
         for timestep in range(1, MAX_TS + 1)
     }
-    for ts in action_model:
-        for dc in action_model[ts]:
-            has_buy = cp.new_bool_var(f"{ts}_{dc}_has_buy")
-            has_dismiss = cp.new_bool_var(f"{ts}_{dc}_has_sell")
-            _ = cp.add(
-                sum(action_model[ts][dc][sg][Action.BUY] for sg in ServerGeneration)
-                != 0
-            ).OnlyEnforceIf(has_buy)
-            _ = cp.add(
-                sum(action_model[ts][dc][sg][Action.DISMISS] for sg in ServerGeneration)
-                != 0
-            ).OnlyEnforceIf(has_dismiss)
-            _ = cp.add(has_buy + has_dismiss <= 1)
 
     # We calculate the total cost of buying servers by multiplying to volume to price
     buying_cost = cp.new_int_var(0, INFINITY, "cost")

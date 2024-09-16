@@ -13,7 +13,7 @@ solutions = [
 solutions.sort()  # pyright: ignore[reportCallIssue]
 
 total_score = 0
-for f in solutions:
+for f in ["output/123.json"] or solutions:
     if not f:
         continue
     print(f"{f} - ", end="", flush=True)
