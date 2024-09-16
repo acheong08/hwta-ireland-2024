@@ -332,7 +332,7 @@ def solve_supply(
     cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    # solver.parameters.max_time_in_seconds = 5 * 60
+    solver.parameters.max_time_in_seconds = 1 * 60
     status = solver.solve(cp)
     if (
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
