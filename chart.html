@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Supply and Demand Map Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div style="width: 80%; margin: auto">
+      <select id="serverGeneration">
+        <!-- Options will be dynamically populated -->
+      </select>
+      <canvas id="supplyDemandChart"></canvas>
+    </div>
+
+    <script>
+      async function main() {
+        // Fetch supply and demand data
+        const supplyMapData = await (await fetch("output/3329.json")).json();
+        const demandMapData = await (
+          await fetch("output/3329_demand.json")
+        ).json();
+
+        // Define colors for each latency sensitivity
+        const colors = {
+          low: "rgb(75, 192, 192)",
+          medium: "rgb(255, 159, 64)",
+          high: "rgb(255, 99, 132)",
+        };
+
+        // Function to update the chart
+        function updateChart(serverGeneration) {
+          const ctx = document
+            .getElementById("supplyDemandChart")
+            .getContext("2d");
+          const supplyData = supplyMapData[serverGeneration];
+          const demandData = demandMapData[serverGeneration];
+
+          const datasets = [];
+
+          Object.keys(supplyData).forEach((sensitivity) => {
+            // Supply dataset
+            datasets.push({
+              label: `Supply ${sensitivity}`,
+              data: Object.entries(supplyData[sensitivity])
+                .filter(([_, value]) => value != 0)
+                .map(([ts, value]) => ({
+                  x: parseInt(ts),
+                  y: value,
+                })),
+              borderColor: colors[sensitivity],
+              backgroundColor: colors[sensitivity],
+              fill: false,
+              tension: 0.1,
+            });
+
+            // Demand dataset
+            datasets.push({
+              label: `Demand ${sensitivity}`,
+              data: Object.entries(demandData[sensitivity])
+                .filter(([_, value]) => value != 0)
+                .map(([ts, value]) => ({
+                  x: parseInt(ts),
+                  y: value,
+                })),
+              borderColor: colors[sensitivity],
+              backgroundColor: colors[sensitivity],
+              borderDash: [5, 5], // This creates the dotted line
+              fill: false,
+              tension: 0.1,
+            });
+          });
+
+          if (window.myChart) {
+            window.myChart.destroy();
+          }
+
+          window.myChart = new Chart(ctx, {
+            type: "line",
+            data: {
+              datasets: datasets,
+            },
+            options: {
+              responsive: true,
+              scales: {
+                x: {
+                  type: "linear",
+                  position: "bottom",
+                  title: {
+                    display: true,
+                    text: "Timestep",
+                  },
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: "Supply/Demand",
+                  },
+                },
+              },
+              plugins: {
+                title: {
+                  display: true,
+                  text: `Supply and Demand Map for ${serverGeneration}`,
+                },
+                legend: {
+                  position: "top",
+                },
+              },
+            },
+          });
+        }
+
+        // Populate server generation dropdown
+        const serverGenerationSelect =
+          document.getElementById("serverGeneration");
+        Object.keys(supplyMapData).forEach((sg) => {
+          const option = document.createElement("option");
+          option.value = sg;
+          option.textContent = sg;
+          serverGenerationSelect.appendChild(option);
+        });
+
+        // Initial chart render
+        updateChart(Object.keys(supplyMapData)[0]);
+
+        // Update chart when server generation changes
+        serverGenerationSelect.addEventListener("change", (event) => {
+          updateChart(event.target.value);
+        });
+      }
+      main();
+    </script>
+  </body>
+</html>
