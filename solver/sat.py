@@ -102,17 +102,17 @@ def solve_supply(
                     act: cp.new_int_var(
                         0,
                         (
-                            (
+                            0
+                            if (
+                                sg_map[server_generation].release_time[0] > timestep
+                                and sg_map[server_generation].release_time[1] < timestep
+                                and act == Action.BUY
+                            )
+                            or (timestep == 0 and act == Action.DISMISS)
+                            else (
                                 dc_map[datacenter.datacenter_id].slots_capacity
                                 // sg_map[server_generation].slots_size
                             )
-                            if (
-                                sg_map[server_generation].release_time[0] <= timestep
-                                and sg_map[server_generation].release_time[1]
-                                >= timestep
-                            )
-                            or (timestep == 0 and act == Action.DISMISS)
-                            else 0
                         ),
                         f"{timestep}_{datacenter}_{server_generation}_action",
                     )

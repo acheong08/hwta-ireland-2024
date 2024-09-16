@@ -36,7 +36,7 @@ for seed in seeds:
             demand_map[d.server_generation.value][sen.value][d.time_step] = (
                 d.get_latency(sen)
             )
-    with open(f"output/{seed}.json", "w") as f:
+    with open(f"output/{seed}_1.json", "w") as f:
         json.dump(solution, f)
     with open(f"output/{seed}_demand.json", "w") as f:
         json.dump(demand_map, f)
