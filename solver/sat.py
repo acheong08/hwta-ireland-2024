@@ -1,4 +1,4 @@
-# pyright: reportAssignmentType=false
+# pyright: reportAssignmentType=false, reportUnusedCallResult=false
 import itertools
 import math
 from collections import defaultdict
@@ -183,6 +183,36 @@ def solve_supply(
         for sg in ServerGeneration
     }
 
+    moved: dict[tuple[int, ServerGeneration, str, str, int], int] = {
+        (
+            cur_ts,
+            sg,
+            src_dc.datacenter_id,
+            target_dc.datacenter_id,
+            src_ts,
+        ): cp.new_int_var(
+            0,
+            dc_map[src_dc.datacenter_id].slots_capacity // sg_map[sg].slots_size,
+            f"{cur_ts}{sg}{src_dc.datacenter_id}{target_dc.datacenter_id}{src_ts}_move",
+        )
+        for cur_ts, sg, src_dc in itertools.product(
+            range(MIN_TS, MAX_TS + 1),
+            ServerGeneration,
+            datacenters,
+        )
+        for target_dc in [
+            anydc for anydc in datacenters if anydc.datacenter_id != src_dc
+        ]
+        for src_ts in range(sg_map[sg].release_time[0], cur_ts)
+    }
+    for m in moved:
+        cur_ts, sg, src_dc, _, src_ts = m
+        if src_ts + sg_map[sg].life_expectancy < cur_ts:
+            cp.add(moved[m] == 0)
+            continue
+        # You cannot move more than what was bought at src_ts
+        cp.add(moved[m] <= action_model[src_ts][src_dc][sg][Action.BUY])
+
     for ts in supply:
         if ts == 0:
             continue
@@ -194,6 +224,14 @@ def solve_supply(
                     dismissed_servers[ts][server_generation][dc]
                     == dismissed_servers[ts - 1][server_generation][dc]
                     + action_model[ts][dc][server_generation][Action.DISMISS]
+                    # Also "dismiss" servers that were moved away from this datacenter
+                    + sum(
+                        moved[(ts, server_generation, dc, anydc.datacenter_id, anyts)]
+                        for anydc in datacenters
+                        for anyts in range(
+                            sg_map[server_generation].release_time[0], ts
+                        )
+                    )
                 )
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{server_generation}_{dc}_m")
                 if ts - sg_map[server_generation].life_expectancy >= 1:
@@ -224,6 +262,34 @@ def solve_supply(
                     - action_model[ts][dc][server_generation][Action.DISMISS]
                     # Subtract the expired servers based on life expectancy
                     - (m if ts > sg_map[server_generation].life_expectancy else 0)
+                    # Add servers moved to this datacenter
+                    + sum(
+                        moved[(ts, server_generation, dc, anydc.datacenter_id, anyts)]
+                        for anydc in [
+                            anydc for anydc in datacenters if anydc.datacenter_id != dc
+                        ]
+                        for anyts in range(
+                            sg_map[server_generation].release_time[0], ts
+                        )
+                    )
+                    # Subtract moved servers that should've expired
+                    - sum(
+                        moved[
+                            (
+                                anyts,
+                                server_generation,
+                                dc,
+                                anydc.datacenter_id,
+                                ts - sg_map[server_generation].life_expectancy,
+                            )
+                        ]
+                        for anydc in [
+                            anydc for anydc in datacenters if anydc.datacenter_id != dc
+                        ]
+                        for anyts in range(
+                            ts - sg_map[server_generation].life_expectancy, ts
+                        )
+                    )
                 )
 
     energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
