@@ -196,15 +196,18 @@ def solve_supply(
             f"{cur_ts}{sg}{src_dc.datacenter_id}{target_dc.datacenter_id}{src_ts}_move",
         )
         for cur_ts, sg, src_dc in itertools.product(
-            range(MIN_TS, MAX_TS + 1),
+            range(MIN_TS + 1, MAX_TS + 1),
             ServerGeneration,
             datacenters,
         )
         for target_dc in [
             anydc for anydc in datacenters if anydc.datacenter_id != src_dc
         ]
-        for src_ts in range(sg_map[sg].release_time[0], cur_ts)
+        for src_ts in range(
+            max(sg_map[sg].release_time[0], cur_ts - sg_map[sg].life_expectancy), cur_ts
+        )
     }
+    move_costs = 0
     for m in moved:
         cur_ts, sg, src_dc, _, src_ts = m
         if src_ts + sg_map[sg].life_expectancy < cur_ts:
@@ -212,40 +215,47 @@ def solve_supply(
             continue
         # You cannot move more than what was bought at src_ts
         cp.add(moved[m] <= action_model[src_ts][src_dc][sg][Action.BUY])
+        move_costs += moved[m]
 
     for ts in supply:
         if ts == 0:
             continue
 
-        for server_generation in supply[ts]:
-            for dc in supply[ts][server_generation]:
+        for sg in supply[ts]:
+            for dc in supply[ts][sg]:
                 # Find expired servers that were not dismissed
                 _ = cp.add(
-                    dismissed_servers[ts][server_generation][dc]
-                    == dismissed_servers[ts - 1][server_generation][dc]
-                    + action_model[ts][dc][server_generation][Action.DISMISS]
+                    dismissed_servers[ts][sg][dc]
+                    == dismissed_servers[ts - 1][sg][dc]
+                    + action_model[ts][dc][sg][Action.DISMISS]
                     # Also "dismiss" servers that were moved away from this datacenter
                     + sum(
-                        moved[(ts, server_generation, dc, anydc.datacenter_id, anyts)]
-                        for anydc in datacenters
+                        moved[(ts, sg, dc, anydc.datacenter_id, anyts)]
+                        for anydc in [
+                            anydc for anydc in datacenters if anydc.datacenter_id != dc
+                        ]
                         for anyts in range(
-                            sg_map[server_generation].release_time[0], ts
+                            max(
+                                ts - sg_map[sg].life_expectancy,
+                                sg_map[sg].release_time[0],
+                            ),
+                            ts,
                         )
                     )
                 )
-                m = cp.new_int_var(0, INFINITY, f"{ts}_{server_generation}_{dc}_m")
-                if ts - sg_map[server_generation].life_expectancy >= 1:
+                m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{dc}_m")
+                if ts - sg_map[sg].life_expectancy >= 1:
                     _ = cp.add_max_equality(
                         m,
                         [
                             0,
-                            action_model[
-                                ts - sg_map[server_generation].life_expectancy
-                            ][dc][server_generation][Action.BUY]
-                            - dismissed_servers[ts - 1][server_generation][dc]
-                            + dismissed_servers[
-                                ts - sg_map[server_generation].life_expectancy - 1
-                            ][server_generation][dc],
+                            action_model[ts - sg_map[sg].life_expectancy][dc][sg][
+                                Action.BUY
+                            ]
+                            - dismissed_servers[ts - 1][sg][dc]
+                            + dismissed_servers[ts - sg_map[sg].life_expectancy - 1][
+                                sg
+                            ][dc],
                         ],
                     )
                 else:
@@ -254,41 +264,64 @@ def solve_supply(
                 # We do this for all timesteps in the past
                 _ = cp.add(
                     # Calculate current sum
-                    supply[ts][server_generation][dc]
-                    == action_model[ts][dc][server_generation][Action.BUY]
+                    supply[ts][sg][dc]
+                    == action_model[ts][dc][sg][Action.BUY]
                     # Take the previous timestep
-                    + supply[ts - 1][server_generation][dc]
+                    + supply[ts - 1][sg][dc]
                     # Subtract dismissed servers
-                    - action_model[ts][dc][server_generation][Action.DISMISS]
+                    - action_model[ts][dc][sg][Action.DISMISS]
                     # Subtract the expired servers based on life expectancy
-                    - (m if ts > sg_map[server_generation].life_expectancy else 0)
+                    - (m if ts > sg_map[sg].life_expectancy else 0)
                     # Add servers moved to this datacenter
-                    + sum(
-                        moved[(ts, server_generation, dc, anydc.datacenter_id, anyts)]
-                        for anydc in [
-                            anydc for anydc in datacenters if anydc.datacenter_id != dc
-                        ]
-                        for anyts in range(
-                            sg_map[server_generation].release_time[0], ts
+                    + (
+                        sum(
+                            moved[(ts, sg, dc, anydc.datacenter_id, src_ts)]
+                            for anydc in [
+                                anydc
+                                for anydc in datacenters
+                                if anydc.datacenter_id != dc
+                            ]
+                            for src_ts in range(
+                                max(
+                                    sg_map[sg].release_time[0],
+                                    ts - sg_map[sg].life_expectancy,
+                                ),
+                                ts,
+                            )  # Skip if timestep is 1
                         )
+                        if ts != MIN_TS
+                        else 0
                     )
                     # Subtract moved servers that should've expired
-                    - sum(
-                        moved[
+                    - (
+                        sum(
                             (
-                                anyts,
-                                server_generation,
-                                dc,
-                                anydc.datacenter_id,
-                                ts - sg_map[server_generation].life_expectancy,
+                                (
+                                    moved[
+                                        (
+                                            moved_ts,
+                                            sg,
+                                            dc,
+                                            anydc.datacenter_id,
+                                            ts - sg_map[sg].life_expectancy,
+                                        )
+                                    ]
+                                )
+                                if moved_ts != ts - sg_map[sg].life_expectancy
+                                else 0
                             )
-                        ]
-                        for anydc in [
-                            anydc for anydc in datacenters if anydc.datacenter_id != dc
-                        ]
-                        for anyts in range(
-                            ts - sg_map[server_generation].life_expectancy, ts
+                            for anydc in [
+                                anydc
+                                for anydc in datacenters
+                                if anydc.datacenter_id != dc
+                            ]
+                            for moved_ts in range(
+                                ts - sg_map[sg].life_expectancy,
+                                ts,
+                            )
                         )
+                        if ts >= sg_map[sg].release_time[0] + sg_map[sg].life_expectancy
+                        else 0
                     )
                 )
 
@@ -375,7 +408,7 @@ def solve_supply(
                 _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
 
     total_cost = cp.new_int_var(0, INFINITY, "total_cost")
-    _ = cp.add(total_cost == buying_cost + energy_cost + maintenance_cost)
+    _ = cp.add(total_cost == buying_cost + energy_cost + maintenance_cost + move_costs)
     total_revenue = sum(
         revenues[ts][sg][sen]
         for ts in revenues
