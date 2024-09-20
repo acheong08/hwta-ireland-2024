@@ -30,10 +30,9 @@ class Sensitivity(Enum):
 class Elasticity:
     server_generation: ServerGeneration
     latency_sensitivity: Sensitivity
-    elasticity: int
+    elasticity: float
 
     def setup(self):
-        self.elasticity = int(self.elasticity * scale)
         self.server_generation = ServerGeneration(self.server_generation)
         self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
         return self

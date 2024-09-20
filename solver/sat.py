@@ -66,7 +66,7 @@ def solve_supply(
     servers: list[Server],
     elasticity: list[Elasticity],
 ):
-    elasticity_map: dict[ServerGeneration, dict[Sensitivity, int]] = {}
+    elasticity_map: dict[ServerGeneration, dict[Sensitivity, float]] = {}
     for el in elasticity:
         if elasticity_map.get(el.server_generation) is None:
             elasticity_map[el.server_generation] = {}
@@ -319,9 +319,15 @@ def solve_supply(
                 _ = cp.add_division_equality(
                     pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], pig[(ts, sg, sen)]
                 )
+                demand_change_large = cp.new_int_var(0, INFINITY, f"dcl{ts}{sg}{sen}")
+                _ = cp.add_division_equality(
+                    demand_change_large,
+                    pig_change * 1_000_000_000,
+                    int(elasticity_map[sg][sen] * 1_000_000_000),
+                )
                 demand_change = cp.new_int_var(0, INFINITY, f"dc{ts}{sg}{sen}")
                 _ = cp.add_division_equality(
-                    demand_change, pig_change, elasticity_map[sg][sen]
+                    demand_change, demand_change_large, 1_000_000_000
                 )
                 demand = demand_map[ts].get(sg, {sen: 0})[sen] + demand_change
                 # Get amount of demand that can be satisfied
@@ -346,7 +352,7 @@ def solve_supply(
     cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 1 * 60
+    solver.parameters.max_time_in_seconds = 10 * 60
     status = solver.solve(cp)
     if (
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]

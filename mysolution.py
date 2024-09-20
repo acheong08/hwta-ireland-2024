@@ -44,3 +44,4 @@ for seed in seeds:
         json.dump(solution, f)
     with open(f"output/{seed}_demand.json", "w") as f:
         json.dump(demand_map, f)
+    break
