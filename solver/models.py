@@ -27,6 +27,19 @@ class Sensitivity(Enum):
 
 
 @dataclass
+class Elasticity:
+    server_generation: ServerGeneration
+    latency_sensitivity: Sensitivity
+    elasticity: int
+
+    def setup(self):
+        self.elasticity = int(self.elasticity * scale)
+        self.server_generation = ServerGeneration(self.server_generation)
+        self.latency_sensitivity = Sensitivity(self.latency_sensitivity)
+        return self
+
+
+@dataclass
 class Datacenter:
     datacenter_id: str
     cost_of_energy: int

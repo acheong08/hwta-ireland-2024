@@ -11,6 +11,7 @@ from .models import (
     Action,
     Datacenter,
     Demand,
+    Elasticity,
     SellingPrices,
     Sensitivity,
     Server,
@@ -63,7 +64,13 @@ def solve_supply(
     datacenters: list[Datacenter],
     selling_prices: list[SellingPrices],
     servers: list[Server],
+    elasticity: list[Elasticity],
 ):
+    elasticity_map: dict[ServerGeneration, dict[Sensitivity, int]] = {}
+    for el in elasticity:
+        if elasticity_map.get(el.server_generation) is None:
+            elasticity_map[el.server_generation] = {}
+        elasticity_map[el.server_generation][el.latency_sensitivity] = el.elasticity
     sg_map = {server.server_generation: server for server in servers}
     dc_map = {dc.datacenter_id: dc for dc in datacenters}
     demand_map: dict[int, dict[ServerGeneration, dict[Sensitivity, int]]] = {}
@@ -282,6 +289,14 @@ def solve_supply(
         for sg in ServerGeneration
     }
 
+    pig = {
+        (ts, sg, sen): cp.new_int_var(
+            int(sp_map[sg][sen] * 0.5), int(sp_map[sg][sen] * 1.5), f"pig{sg}{sen}{ts}"
+        )
+        for sg, sen in itertools.product(ServerGeneration, Sensitivity)
+        for ts in range(sg_map[sg].release_time[0], MAX_TS + 1)
+    }
+
     for ts in revenues:
         if ts == 0:
             continue
@@ -296,7 +311,19 @@ def solve_supply(
                     )
                     for dc in datacenters
                 )
-                demand = demand_map[ts].get(sg, {sen: 0})[sen]
+                demand = 0
+                if ts < sg_map[sg].release_time[0]:
+                    _ = cp.add(revenues[ts][sg][sen] == 0)
+                    continue
+                pig_change = cp.new_int_var(0, 100000, f"pig_cg{ts}{sg}{sen}")
+                _ = cp.add_division_equality(
+                    pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], pig[(ts, sg, sen)]
+                )
+                demand_change = cp.new_int_var(0, INFINITY, f"dc{ts}{sg}{sen}")
+                _ = cp.add_division_equality(
+                    demand_change, pig_change, elasticity_map[sg][sen]
+                )
+                demand = demand_map[ts].get(sg, {sen: 0})[sen] + demand_change
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
                 _ = cp.add_min_equality(
