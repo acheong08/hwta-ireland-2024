@@ -319,16 +319,13 @@ def solve_supply(
                 _ = cp.add_division_equality(
                     pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], pig[(ts, sg, sen)]
                 )
-                demand_change_large = cp.new_int_var(0, INFINITY, f"dcl{ts}{sg}{sen}")
+                demand_change = cp.new_int_var(0, INFINITY, f"dcl{ts}{sg}{sen}")
                 _ = cp.add_division_equality(
-                    demand_change_large,
+                    demand_change,
                     pig_change * 1_000_000_000,
                     int(elasticity_map[sg][sen] * 1_000_000_000),
                 )
-                demand_change = cp.new_int_var(0, INFINITY, f"dc{ts}{sg}{sen}")
-                _ = cp.add_division_equality(
-                    demand_change, demand_change_large, 1_000_000_000
-                )
+
                 demand = demand_map[ts].get(sg, {sen: 0})[sen] + demand_change
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
