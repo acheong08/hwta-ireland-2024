@@ -6,7 +6,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from constants import get_datacenters, get_selling_prices, get_servers
+from constants import get_datacenters, get_elasticity, get_selling_prices, get_servers
 from evaluation import get_actual_demand  # type: ignore[import]
 from solver.models import Demand, Sensitivity
 from solver.sat import create_supply_map, solve_supply
@@ -28,7 +28,11 @@ for seed in seeds:
         )
     servers = get_servers()
     solution = solve_supply(
-        parsed_demand, get_datacenters(), get_selling_prices(), servers
+        parsed_demand,
+        get_datacenters(),
+        get_selling_prices(),
+        servers,
+        get_elasticity(),
     )
     demand_map = create_supply_map()
     for d in parsed_demand:

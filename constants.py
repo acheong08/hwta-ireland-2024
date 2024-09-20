@@ -4,7 +4,15 @@
 import pandas as pd
 
 from evaluation import get_actual_demand
-from solver.models import Datacenter, Demand, SellingPrices, Server
+from solver.models import (
+    Datacenter,
+    Demand,
+    Elasticity,
+    SellingPrices,
+    Sensitivity,
+    Server,
+    ServerGeneration,
+)
 
 
 def get_datacenters() -> list[Datacenter]:
@@ -38,7 +46,7 @@ def get_selling_prices() -> list[SellingPrices]:
 def get_demand() -> list[Demand]:
     parsed: list[Demand] = []
 
-    for i, row in get_actual_demand(pd.read_csv("./data/demand.csv")).iterrows():
+    for _, row in get_actual_demand(pd.read_csv("./data/demand.csv")).iterrows():
         parsed.append(
             Demand(
                 row.time_step, row.server_generation, row.high, row.medium, row.low
@@ -46,6 +54,13 @@ def get_demand() -> list[Demand]:
         )
 
     return parsed
+
+
+def get_elasticity() -> list[Elasticity]:
+    return [
+        Elasticity(**p).setup()  # pyright: ignore[]
+        for _, p in pd.read_csv("data/price_elasticity_of_demand.csv").iterrows()
+    ]
 
 
 if __name__ == "__main__":
