@@ -44,6 +44,23 @@ def create_supply_map() -> (
     return NestedDefaultDict(lambda: NestedDefaultDict(lambda: defaultdict(int)))
 
 
+def price_from_supply(
+    initial_demand: float,
+    initial_price: float,
+    supply: float,
+    price_elasticity: float,
+) -> float:
+
+    if supply == 0 or initial_demand == 0:
+        return 0
+
+    return (
+        (supply / (initial_demand * price_elasticity)) * initial_price
+        - (initial_price / price_elasticity)
+        + initial_price
+    )
+
+
 def solve_supply(
     demands: list[Demand],
     datacenters: list[Datacenter],
@@ -59,14 +76,14 @@ def solve_supply(
     sg_map = {server.server_generation: server for server in servers}
     dc_map = {dc.datacenter_id: dc for dc in datacenters}
     demand_map: dict[int, dict[ServerGeneration, dict[Sensitivity, int]]] = {}
-    for demand in demands:
-        if demand_map.get(demand.time_step) is None:
-            demand_map[demand.time_step] = {}
-        if demand_map[demand.time_step].get(demand.server_generation) is None:
-            demand_map[demand.time_step][demand.server_generation] = {}
+    for price in demands:
+        if demand_map.get(price.time_step) is None:
+            demand_map[price.time_step] = {}
+        if demand_map[price.time_step].get(price.server_generation) is None:
+            demand_map[price.time_step][price.server_generation] = {}
         for sen in Sensitivity:
-            demand_map[demand.time_step][demand.server_generation][sen] = (
-                demand.get_latency(sen)
+            demand_map[price.time_step][price.server_generation][sen] = (
+                price.get_latency(sen)
             )
     sp_map: dict[ServerGeneration, dict[Sensitivity, int]] = {}
     for sp in selling_prices:
@@ -332,9 +349,27 @@ def solve_supply(
                             )
                         )
         prices: list[PriceEntry] = []
-        for sen in Sensitivity:
-            for sg in ServerGeneration:
-                prices.append(PriceEntry(1, sg, sen, sp_map[sg][sen]))
+        for ts in range(MIN_TS, MAX_TS + 1):
+            for sen in Sensitivity:
+                for sg in ServerGeneration:
+                    price = int(
+                        price_from_supply(
+                            demand_map[ts].get(sg, {sen: 0})[sen],
+                            sp_map[sg][sen],
+                            supply_map[sg.value][sen.value][ts],
+                            elasticity_map[sg][sen],
+                        )
+                    )
+                    if price == 0:
+                        continue
+                    prices.append(
+                        PriceEntry(
+                            ts,
+                            sg,
+                            sen,
+                            price,
+                        )
+                    )
         return supply_map, solution, prices
     else:
         print(solver.status_name(status))
