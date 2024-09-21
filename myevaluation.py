@@ -31,4 +31,6 @@ for f in solutions:
         servers,
         selling_prices,
         elasticity,
+        seed=seed,
     )
+    print(score)
