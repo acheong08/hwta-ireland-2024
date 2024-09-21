@@ -338,7 +338,9 @@ def solve_supply(
                         total_availability,
                     ],  # Each server has *capacity* number of cpu/gpu that satisfies demand
                 )
-                _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
+                _ = cp.add_multiplication_equality(
+                    revenues[ts][sg][sen], [m, pig[(ts, sg, sen)]]
+                )
 
     total_cost = cp.new_int_var(0, INFINITY, "total_cost")
     _ = cp.add(total_cost == buying_cost + energy_cost + maintenance_cost)
