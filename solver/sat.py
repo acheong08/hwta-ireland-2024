@@ -287,11 +287,11 @@ def solve_supply(
                 if ts < sg_map[sg].release_time[0]:
                     _ = cp.add(revenues[ts][sg][sen] == 0)
                     continue
-                pig_change = cp.new_int_var(0, 100000, f"pig_cg{ts}{sg}{sen}")
+                pig_change = cp.new_int_var(-1000_00, 1000_00, f"pig_cg{ts}{sg}{sen}")
                 _ = cp.add_division_equality(
                     pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], sp_map[sg][sen]
                 )
-                demand_change = cp.new_int_var(0, INFINITY, f"dcl{ts}{sg}{sen}")
+                demand_change = cp.new_int_var(-INFINITY, INFINITY, f"dcl{ts}{sg}{sen}")
                 _ = cp.add_division_equality(
                     demand_change,
                     pig_change * 1_000_000_000,
