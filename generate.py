@@ -51,13 +51,7 @@ def generate_solution(
                 )
                 counter += 1
         elif entry.action == Action.DISMISS:
-            # Pop until we have no more expired servers
-            while (
-                len(ids[entry.datacenter_id][entry.server_generation]) > 0
-                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
-                <= entry.timestep
-            ):
-                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
+
             for _ in range(entry.amount):
                 server_id = ids[entry.datacenter_id][entry.server_generation].pop(0)
                 solution.append(
@@ -69,6 +63,13 @@ def generate_solution(
                         "action": "dismiss",
                     }
                 )
+            # Pop until we have no more expired servers
+            while (
+                len(ids[entry.datacenter_id][entry.server_generation]) > 0
+                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
+                <= entry.timestep
+            ):
+                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
 
     return solution
 
