@@ -53,7 +53,8 @@ def generate_solution(
         elif entry.action == Action.DISMISS:
             # Pop until we have no more expired servers
             while (
-                ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
+                len(ids[entry.datacenter_id][entry.server_generation]) > 0
+                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
                 <= entry.timestep
             ):
                 _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
@@ -68,6 +69,7 @@ def generate_solution(
                         "action": "dismiss",
                     }
                 )
+
     return solution
 
 

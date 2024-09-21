@@ -17,7 +17,9 @@
     <script>
       async function main(seed) {
         // Fetch supply and demand data
-        const supplyMapData = await (await fetch(`output/${seed}.json`)).json();
+        const supplyMapData = await (
+          await fetch(`output/${seed}_supply.json`)
+        ).json();
         const demandMapData = await (
           await fetch(`output/${seed}_demand.json`)
         ).json();
