@@ -256,15 +256,6 @@ def solve_supply(
         sg: {sen: cp.new_int_var(0, 0, f"0_{sg}_{sen}_util") for sen in Sensitivity}
         for sg in ServerGeneration
     }
-
-    pig = {
-        (ts, sg, sen): cp.new_int_var(
-            int(sp_map[sg][sen] * 0.5), int(sp_map[sg][sen] * 2), f"pig{sg}{sen}{ts}"
-        )
-        for sg, sen in itertools.product(ServerGeneration, Sensitivity)
-        for ts in range(sg_map[sg].release_time[0], MAX_TS + 1)
-    }
-
     for ts in revenues:
         if ts == 0:
             continue
@@ -283,41 +274,21 @@ def solve_supply(
                     )
                     for dc in datacenters
                 )
-                demand = 0
                 if ts < sg_map[sg].release_time[0]:
                     _ = cp.add(revenues[ts][sg][sen] == 0)
                     continue
-                pig_change = cp.new_int_var(-1_00, 100_00, f"pig_cg{ts}{sg}{sen}")
-                _ = cp.add_division_equality(
-                    pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], sp_map[sg][sen]
-                )
-                SCALE = 1_000_000
-                demand_change = cp.new_int_var(-SCALE, SCALE, f"dcl{ts}{sg}{sen}")
-                _ = cp.add_multiplication_equality(
-                    demand_change,
-                    [
-                        pig_change,
-                        int(elasticity_map[sg][sen] * SCALE),
-                    ],
-                )
 
-                demand = cp.new_int_var(0, INFINITY, f"demand_{ts}{sg}{sen}")
-                _ = cp.add_division_equality(
-                    demand,
-                    demand_map[ts].get(sg, {sen: 0})[sen] * (1 * SCALE + demand_change),
-                    SCALE,
-                )
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
                 _ = cp.add_min_equality(
                     m,
                     [
-                        demand,
+                        demand_map[ts].get(sg, {sen: 0})[sen],
                         total_availability,
                     ],  # Each server has *capacity* number of cpu/gpu that satisfies demand
                 )
                 _ = cp.add_multiplication_equality(
-                    revenues[ts][sg][sen], [m, pig[(ts, sg, sen)]]
+                    revenues[ts][sg][sen], [m, sp_map[sg][sen]]
                 )
 
     total_cost = cp.new_int_var(0, INFINITY, "total_cost")
@@ -331,7 +302,7 @@ def solve_supply(
     cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 5 * 60
+    solver.parameters.max_time_in_seconds = 90
     status = solver.solve(cp)
     if (
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
@@ -361,9 +332,9 @@ def solve_supply(
                             )
                         )
         prices: list[PriceEntry] = []
-        for p in pig:
-            ts, sg, sen = p
-            prices.append(PriceEntry(ts, sg, sen, solver.value(pig[p])))
+        for sen in Sensitivity:
+            for sg in ServerGeneration:
+                prices.append(PriceEntry(1, sg, sen, sp_map[sg][sen]))
         return supply_map, solution, prices
     else:
         print(solver.status_name(status))
