@@ -11,7 +11,7 @@ thedir = sys.argv[1] if len(sys.argv) == 2 else "output"
 solutions = [
     f"./{thedir}/{f}" for f in os.listdir(thedir) if len(f) == 4 + len(".json")
 ]
-solutions.sort()  # pyright: ignore[reportCallIssue]
+solutions.sort(reverse=True)  # pyright: ignore[reportCallIssue]
 
 for f in solutions:
     if not f:

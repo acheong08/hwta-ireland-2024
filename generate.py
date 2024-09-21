@@ -1,6 +1,4 @@
-from constants import get_servers
 from solver.models import Action, PriceEntry, Server, ServerGeneration, SolutionEntry
-from utils import save_solution  # type: ignore[import]
 
 
 def generate_pricing(prices: list[PriceEntry]):
@@ -51,13 +49,7 @@ def generate_solution(
                 )
                 counter += 1
         elif entry.action == Action.DISMISS:
-            # Pop until we have no more expired servers
-            while (
-                len(ids[entry.datacenter_id][entry.server_generation]) > 0
-                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
-                <= entry.timestep
-            ):
-                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
+
             for _ in range(entry.amount):
                 if len(ids[entry.datacenter_id][entry.server_generation]) == 0:
                     continue
@@ -71,24 +63,12 @@ def generate_solution(
                         "action": "dismiss",
                     }
                 )
+            # Pop until we have no more expired servers
+            while (
+                len(ids[entry.datacenter_id][entry.server_generation]) > 0
+                and ids[entry.datacenter_id][entry.server_generation][0]["expires_at"]
+                <= entry.timestep
+            ):
+                _ = ids[entry.datacenter_id][entry.server_generation].pop(0)
 
     return solution
-
-
-if __name__ == "__main__":
-    solution = open("solution.txt", "r")
-    entries: list[SolutionEntry] = []
-    for line in solution.readlines():
-        parts = line.split()
-        action = "buy" if parts[3] == "Action.BUY" else "dismiss"
-        server_generation = parts[2].split(".")[-1].replace("_", ".")
-        entries.append(
-            SolutionEntry(
-                timestep=int(parts[0]),
-                datacenter_id=parts[1],
-                server_generation=ServerGeneration(server_generation),
-                action=Action(action),
-                amount=int(parts[4]),
-            )
-        )
-    save_solution(generate_solution(entries, get_servers()), "output/test.json")
