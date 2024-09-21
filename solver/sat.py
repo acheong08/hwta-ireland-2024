@@ -289,7 +289,7 @@ def solve_supply(
                     continue
                 pig_change = cp.new_int_var(0, 100000, f"pig_cg{ts}{sg}{sen}")
                 _ = cp.add_division_equality(
-                    pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], pig[(ts, sg, sen)]
+                    pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], sp_map[sg][sen]
                 )
                 demand_change = cp.new_int_var(0, INFINITY, f"dcl{ts}{sg}{sen}")
                 _ = cp.add_division_equality(
