@@ -127,13 +127,20 @@ class Action(Enum):
 
 
 @dataclass
+class PriceEntry:
+    timestep: int
+    server_generation: ServerGeneration
+    latency_sensitivity: Sensitivity
+    price: int
+
+
+@dataclass
 class SolutionEntry:
     timestep: int
     datacenter_id: str
     server_generation: ServerGeneration
     action: Action
     amount: int
-    datacenter_target: str = ""
 
     def to_dict(self):
         return {

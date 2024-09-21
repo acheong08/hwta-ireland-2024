@@ -12,10 +12,12 @@ from .models import (
     Datacenter,
     Demand,
     Elasticity,
+    PriceEntry,
     SellingPrices,
     Sensitivity,
     Server,
     ServerGeneration,
+    SolutionEntry,
 )
 
 # t = "timestep"
@@ -364,7 +366,25 @@ def solve_supply(
             supply_map[sg.value][dc.latency_sensitivity.value][ts] += (
                 solver.value(supply[ts][sg][dc.datacenter_id]) * sg_map[sg].capacity
             )
-        return supply_map
+        solution: list[SolutionEntry] = []
+        for ts in action_model:
+            for dc in action_model[ts]:
+                for sg in action_model[ts][dc]:
+                    for act in action_model[ts][dc][sg]:
+                        solution.append(
+                            SolutionEntry(
+                                ts,
+                                dc,
+                                sg,
+                                act,
+                                solver.value(action_model[ts][dc][sg][act]),
+                            )
+                        )
+        prices: list[PriceEntry] = []
+        for p in pig:
+            ts, sg, sen = p
+            prices.append(PriceEntry(ts, sg, sen, solver.value(pig[p])))
+        return supply_map, solution, prices
     else:
         print(solver.status_name(status))
         print(solver.solution_info())

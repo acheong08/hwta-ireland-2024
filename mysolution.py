@@ -1,6 +1,4 @@
 # pyright: reportAssignmentType=false, reportUnknownMemberType=false
-
-
 import json
 
 import numpy as np
@@ -8,6 +6,7 @@ import pandas as pd
 
 from constants import get_datacenters, get_elasticity, get_selling_prices, get_servers
 from evaluation import get_actual_demand  # type: ignore[import]
+from generate import generate_pricing, generate_solution
 from solver.models import Demand, Sensitivity
 from solver.sat import create_supply_map, solve_supply
 
@@ -27,7 +26,7 @@ for seed in seeds:
             Demand(row.time_step, row.server_generation, row.high, row.medium, row.low).setup()  # type: ignore[reportUnknownArgumentType]
         )
     servers = get_servers()
-    solution = solve_supply(
+    supply, solution, prices = solve_supply(
         parsed_demand,
         get_datacenters(),
         get_selling_prices(),
@@ -40,8 +39,16 @@ for seed in seeds:
             demand_map[d.server_generation.value][sen.value][d.time_step] = (
                 d.get_latency(sen)
             )
+    with open(f"output/{seed}_supply.json", "w") as f:
+        json.dump(supply, f)
     with open(f"output/{seed}.json", "w") as f:
-        json.dump(solution, f)
+        json.dump(
+            {
+                "fleet": generate_solution(solution, servers),
+                "pricing_strategy": generate_pricing(prices),
+            },
+            f,
+        )
     with open(f"output/{seed}_demand.json", "w") as f:
         json.dump(demand_map, f)
     break
