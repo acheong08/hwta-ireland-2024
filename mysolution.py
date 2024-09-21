@@ -10,7 +10,7 @@ from generate import generate_pricing, generate_solution
 from solver.models import Demand, Sensitivity
 from solver.sat import create_supply_map, solve_supply
 
-seeds: list[int] = [3329, 4201, 8761, 2311, 2663, 4507, 6247, 2281, 4363, 5693]
+seeds: list[int] = [2381, 5351, 6047, 6829, 9221, 9859, 8053, 1097, 8677, 2521]
 
 known_solutions: set[str] = set()
 
@@ -51,4 +51,3 @@ for seed in seeds:
         )
     with open(f"output/{seed}_demand.json", "w") as f:
         json.dump(demand_map, f)
-    break
