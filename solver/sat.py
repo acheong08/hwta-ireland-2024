@@ -1,6 +1,5 @@
 # pyright: reportAssignmentType=false
 import itertools
-import math
 from collections import defaultdict
 from collections.abc import Callable
 from typing import TypeVar
@@ -45,22 +44,6 @@ def create_supply_map() -> (
     return NestedDefaultDict(lambda: NestedDefaultDict(lambda: defaultdict(int)))
 
 
-def total_maintenance_cost(
-    avg_maint: int, life_expectancy: int, current_timestep: int
-) -> int:
-    total_cost = 0
-    for ts in range(
-        current_timestep, min(current_timestep + life_expectancy, MAX_TS) + 1
-    ):
-        operating_time = ts - current_timestep + 1
-        total_cost += avg_maint * (
-            1
-            + (1.5 * operating_time / life_expectancy)
-            * math.log(1.5 * operating_time / life_expectancy, 2)
-        )
-    return int(total_cost)
-
-
 def solve_supply(
     demands: list[Demand],
     datacenters: list[Datacenter],
@@ -91,15 +74,7 @@ def solve_supply(
             sp_map[sp.server_generation] = {}
 
         sp_map[sp.server_generation][sp.latency_sensitivity] = sp.selling_price
-    total_maint_map = {
-        ts: {
-            sg: total_maintenance_cost(
-                sg_map[sg].average_maintenance_fee, sg_map[sg].life_expectancy, ts
-            )
-            for sg in ServerGeneration
-        }
-        for ts in range(MIN_TS, MAX_TS + 1)
-    }
+
     cp = cp_model.CpModel()
     """
     The action model is what will be solved by SAT. It decides when to buy, sell, or move servers.
@@ -250,16 +225,7 @@ def solve_supply(
         )
     )
 
-    maintenance_cost = cp.new_int_var(0, INFINITY, "maintenance_cost")
-    _ = cp.add(
-        maintenance_cost
-        == sum(
-            action_model[ts][dc][sg][Action.BUY] * total_maint_map[ts][sg]
-            for ts in action_model
-            for dc in action_model[ts]
-            for sg in action_model[ts][dc]
-        )
-    )
+    maintenance_cost = 0
 
     for ts in supply:
         if ts == 0:
@@ -304,6 +270,10 @@ def solve_supply(
             continue
 
         for sg in revenues[ts]:
+            maintenance_cost += sum(
+                supply[ts][sg][dc.datacenter_id] * sg_map[sg].average_maintenance_fee
+                for dc in datacenters
+            )
             for sen in revenues[ts][sg]:
                 total_availability = sum(
                     (
