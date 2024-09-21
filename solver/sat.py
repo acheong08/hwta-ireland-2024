@@ -287,18 +287,26 @@ def solve_supply(
                 if ts < sg_map[sg].release_time[0]:
                     _ = cp.add(revenues[ts][sg][sen] == 0)
                     continue
-                pig_change = cp.new_int_var(-1000_00, 1000_00, f"pig_cg{ts}{sg}{sen}")
+                pig_change = cp.new_int_var(-100_00, 100_00, f"pig_cg{ts}{sg}{sen}")
                 _ = cp.add_division_equality(
                     pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], sp_map[sg][sen]
                 )
-                demand_change = cp.new_int_var(-INFINITY, INFINITY, f"dcl{ts}{sg}{sen}")
+                SCALE = 1_000_00
+                demand_change = cp.new_int_var(
+                    int(-SCALE / 2), int(SCALE / 2), f"dcl{ts}{sg}{sen}"
+                )
                 _ = cp.add_division_equality(
                     demand_change,
-                    pig_change * 1_000_000_000,
+                    pig_change * 1_000_000_000 * SCALE,
                     int(elasticity_map[sg][sen] * 1_000_000_000),
                 )
 
-                demand = demand_map[ts].get(sg, {sen: 0})[sen] + demand_change
+                demand = cp.new_int_var(0, INFINITY, f"demand_{ts}{sg}{sen}")
+                _ = cp.add_division_equality(
+                    demand,
+                    demand_map[ts].get(sg, {sen: 0})[sen] * (1 * SCALE + demand_change),
+                    SCALE,
+                )
                 # Get amount of demand that can be satisfied
                 m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{sen}_m")
                 _ = cp.add_min_equality(
