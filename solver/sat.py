@@ -259,7 +259,7 @@ def solve_supply(
 
     pig = {
         (ts, sg, sen): cp.new_int_var(
-            int(sp_map[sg][sen] * 0.5), int(sp_map[sg][sen] * 1.5), f"pig{sg}{sen}{ts}"
+            int(sp_map[sg][sen] * 0.5), int(sp_map[sg][sen] * 2), f"pig{sg}{sen}{ts}"
         )
         for sg, sen in itertools.product(ServerGeneration, Sensitivity)
         for ts in range(sg_map[sg].release_time[0], MAX_TS + 1)
@@ -287,12 +287,12 @@ def solve_supply(
                 if ts < sg_map[sg].release_time[0]:
                     _ = cp.add(revenues[ts][sg][sen] == 0)
                     continue
-                pig_change = cp.new_int_var(-1, 100_00, f"pig_cg{ts}{sg}{sen}")
+                pig_change = cp.new_int_var(-1_00, 100_00, f"pig_cg{ts}{sg}{sen}")
                 _ = cp.add_division_equality(
                     pig_change, pig[(ts, sg, sen)] - sp_map[sg][sen], sp_map[sg][sen]
                 )
                 SCALE = 1_000_000
-                demand_change = cp.new_int_var(-1, 300_00, f"dcl{ts}{sg}{sen}")
+                demand_change = cp.new_int_var(-SCALE, SCALE, f"dcl{ts}{sg}{sen}")
                 _ = cp.add_multiplication_equality(
                     demand_change,
                     [
@@ -331,7 +331,7 @@ def solve_supply(
     cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 10 * 60
+    solver.parameters.max_time_in_seconds = 5 * 60
     status = solver.solve(cp)
     if (
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
