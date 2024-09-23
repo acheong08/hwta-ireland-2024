@@ -1,4 +1,4 @@
-# pyright: reportAssignmentType=false
+# pyright: reportAssignmentType=false, reportUnusedCallResult=false
 import itertools
 import math
 from collections import defaultdict
@@ -183,31 +183,67 @@ def solve_supply(
         for sg in ServerGeneration
     }
 
+    moved: dict[tuple[int, ServerGeneration, str, str], int] = {
+        (
+            cur_ts,
+            sg,
+            src_dc.datacenter_id,
+            target_dc.datacenter_id,
+        ): cp.new_int_var(
+            0,
+            dc_map[src_dc.datacenter_id].slots_capacity // sg_map[sg].slots_size,
+            f"{cur_ts}{sg}{src_dc.datacenter_id}{target_dc.datacenter_id}_move",
+        )
+        for cur_ts, sg, src_dc in itertools.product(
+            range(MIN_TS + 1, MAX_TS + 1),
+            ServerGeneration,
+            datacenters,
+        )
+        for target_dc in datacenters
+        if target_dc.datacenter_id != src_dc
+    }
+    move_costs = 0
+    for m in moved:
+        cur_ts, sg, src_dc, _ = m
+        # You cannot move more than what was bought at src_ts
+        cp.add(moved[m] <= supply[cur_ts][sg][src_dc])
+        move_costs += moved[m]
+
     for ts in supply:
         if ts == 0:
             continue
 
-        for server_generation in supply[ts]:
-            for dc in supply[ts][server_generation]:
+        for sg in supply[ts]:
+            for dc in supply[ts][sg]:
                 # Find expired servers that were not dismissed
                 _ = cp.add(
-                    dismissed_servers[ts][server_generation][dc]
-                    == dismissed_servers[ts - 1][server_generation][dc]
-                    + action_model[ts][dc][server_generation][Action.DISMISS]
+                    dismissed_servers[ts][sg][dc]
+                    == dismissed_servers[ts - 1][sg][dc]
+                    + action_model[ts][dc][sg][Action.DISMISS]
+                    # Also "dismiss" servers that were moved away from this datacenter
+                    + (
+                        sum(
+                            moved[(ts, sg, dc, target_dc.datacenter_id)]
+                            for target_dc in datacenters
+                            if target_dc.datacenter_id != dc
+                        )
+                        if ts != MIN_TS
+                        else 0
+                    )
                 )
-                m = cp.new_int_var(0, INFINITY, f"{ts}_{server_generation}_{dc}_m")
-                if ts - sg_map[server_generation].life_expectancy >= 1:
+                m = cp.new_int_var(0, INFINITY, f"{ts}_{sg}_{dc}_m")
+                if ts - sg_map[sg].life_expectancy >= 1:
                     _ = cp.add_max_equality(
                         m,
                         [
                             0,
-                            action_model[
-                                ts - sg_map[server_generation].life_expectancy
-                            ][dc][server_generation][Action.BUY]
-                            - dismissed_servers[ts - 1][server_generation][dc]
-                            + dismissed_servers[
-                                ts - sg_map[server_generation].life_expectancy - 1
-                            ][server_generation][dc],
+                            action_model[ts - sg_map[sg].life_expectancy][dc][sg][
+                                Action.BUY
+                            ]
+                            - dismissed_servers[ts - 1][sg][dc]
+                            + dismissed_servers[ts - sg_map[sg].life_expectancy - 1][
+                                sg
+                            ][dc],
                         ],
                     )
                 else:
@@ -216,14 +252,34 @@ def solve_supply(
                 # We do this for all timesteps in the past
                 _ = cp.add(
                     # Calculate current sum
-                    supply[ts][server_generation][dc]
-                    == action_model[ts][dc][server_generation][Action.BUY]
+                    supply[ts][sg][dc]
+                    == action_model[ts][dc][sg][Action.BUY]
                     # Take the previous timestep
-                    + supply[ts - 1][server_generation][dc]
+                    + supply[ts - 1][sg][dc]
                     # Subtract dismissed servers
-                    - action_model[ts][dc][server_generation][Action.DISMISS]
+                    - action_model[ts][dc][sg][Action.DISMISS]
                     # Subtract the expired servers based on life expectancy
-                    - (m if ts > sg_map[server_generation].life_expectancy else 0)
+                    - (m if ts > sg_map[sg].life_expectancy else 0)
+                    # Add servers moved to this datacenter
+                    + (
+                        sum(
+                            moved[(ts, sg, target_dc.datacenter_id, dc)]
+                            for target_dc in datacenters
+                            if target_dc.datacenter_id != dc
+                        )
+                        if ts != MIN_TS
+                        else 0
+                    )
+                    # Remove servers moved away from this datacenter
+                    - (
+                        sum(
+                            moved[(ts, sg, dc, anydc.datacenter_id)]
+                            for anydc in datacenters
+                            if anydc.datacenter_id != dc
+                        )
+                        if ts != MIN_TS
+                        else 0
+                    )
                 )
 
     energy_cost = cp.new_int_var(0, INFINITY, "energy_cost")
@@ -309,7 +365,7 @@ def solve_supply(
                 _ = cp.add(revenues[ts][sg][sen] == m * sp_map[sg][sen])
 
     total_cost = cp.new_int_var(0, INFINITY, "total_cost")
-    _ = cp.add(total_cost == buying_cost + energy_cost + maintenance_cost)
+    _ = cp.add(total_cost == buying_cost + energy_cost + maintenance_cost + move_costs)
     total_revenue = sum(
         revenues[ts][sg][sen]
         for ts in revenues
@@ -319,7 +375,6 @@ def solve_supply(
     cp.maximize(total_revenue - total_cost)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 1 * 60
     status = solver.solve(cp)
     if (
         status == cp_model.OPTIMAL  # type: ignore[reportUnnecessaryComparison]
