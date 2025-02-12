@@ -139,6 +139,5 @@ dmypy.json
 # JetBrains IDEs configuration
 .idea/
 src/revChatGPT/test.py
-README.md
 src/revChatGPT/V3.test.py
 captcha
